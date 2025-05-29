@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
@@ -20,73 +21,86 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
-// import androidx.compose.ui.graphics.ShaderBrush // Tidak dipakai jika blur tanpa edgeTreatment
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-// Hapus import com.taskive.Screen jika tidak ada referensi lain ke data object Screen di file ini
-// import com.taskive.NAV_ARG_SHOW_DIALOG // Tidak perlu diimpor jika sudah di ViewModel dan NavHost
+import com.taskive.DarkPurple // Impor warna dari MainActivity
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
-    navController: NavController,
+    navController: NavController, // Masih bisa berguna untuk navigasi lain dari TasksScreen
     viewModel: TasksViewModel = viewModel()
 ) {
     val showDialogState by viewModel.showAddTaskDialogFlow.collectAsState()
-    Log.d("TasksScreen", "Recomposing. showDialog state from ViewModel: $showDialogState. VM instance: $viewModel")
+    Log.d("TasksScreen", "Recomposing. showDialog state from ViewModel: $showDialogState")
 
-    // ViewModel sekarang menangani logika kemunculan dialog awal berdasarkan SavedStateHandle
-    // Tidak ada LaunchedEffect di sini untuk memicu dialog berdasarkan argumen navigasi.
+    // TasksScreen sekarang menggunakan Scaffold sendiri untuk FAB lokal
+    Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    Log.d("TasksScreen", "FAB clicked, calling viewModel.openAddTaskDialog()")
+                    viewModel.openAddTaskDialog()
+                },
+                containerColor = DarkPurple, // Atau warna lain yang Anda inginkan untuk FAB
+                contentColor = Color.White
+            ) {
+                Icon(Icons.Filled.Add, "Add new task")
+            }
+        },
+        floatingActionButtonPosition = FabPosition.End // Kanan bawah
+    ) { innerPaddingFromScaffold -> // Padding dari Scaffold TasksScreen
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .then(
-                    if (showDialogState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Modifier.blur(radius = 10.dp) // Tanpa edgeTreatment
-                    } else if (showDialogState) {
-                        Modifier.background(Color.Black.copy(alpha = 0.3f))
-                    } else {
-                        Modifier
+        Box(modifier = Modifier.fillMaxSize().padding(innerPaddingFromScaffold)) { // Terapkan padding Scaffold
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background)
+                    .then( // Efek blur/scrim jika dialog muncul
+                        if (showDialogState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                            Modifier.blur(radius = 10.dp)
+                        } else if (showDialogState) {
+                            Modifier.background(Color.Black.copy(alpha = 0.3f))
+                        } else {
+                            Modifier
+                        }
+                    )
+                    .padding(16.dp), // Padding konten internal
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    "Daftar Tugas Akan Tampil di Sini",
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                // TODO: Implementasi LazyColumn atau UI daftar tugas Anda
+            }
+
+            if (showDialogState) {
+                Log.d("TasksScreen", "Rendering AddTaskDialog because showDialogState is true")
+                AddTaskDialog(
+                    onDismissRequest = {
+                        Log.d("TasksScreen", "AddTaskDialog onDismissRequest by user")
+                        viewModel.dismissAddTaskDialog()
+                    },
+                    onTaskCreate = { taskName, date, time, description ->
+                        Log.d("TasksScreen", "Task Created: Name: $taskName, Date: $date, Time: $time, Desc: $description")
+                        // TODO: viewModel.saveNewTask(taskName, date, time, description)
+                        viewModel.dismissAddTaskDialog()
                     }
                 )
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text("Daftar Tugas Akan Tampil di Sini", style = MaterialTheme.typography.headlineMedium)
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = {
-                Log.d("TasksScreen", "Test Munculkan Dialog Manual button clicked")
-                viewModel.requestShowAddTaskDialogExplicitly()
-            }) {
-                Text("Test Munculkan Dialog Manual")
             }
-        }
-
-        if (showDialogState) {
-            Log.d("TasksScreen", "Rendering AddTaskDialog because showDialogState is true")
-            AddTaskDialog(
-                onDismissRequest = {
-                    Log.d("TasksScreen", "AddTaskDialog onDismissRequest by user")
-                    viewModel.dismissAddTaskDialog()
-                },
-                onTaskCreate = { taskName, date, time, description ->
-                    Log.d("TasksScreen", "Task Created: Name: $taskName, Date: $date, Time: $time, Desc: $description")
-                    viewModel.dismissAddTaskDialog()
-                }
-            )
         }
     }
 }
 
+// --- AddTaskDialog tetap sama persis seperti kode lengkap terakhir ---
+// (Tidak ada perubahan di AddTaskDialog dari versi sebelumnya)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskDialog(

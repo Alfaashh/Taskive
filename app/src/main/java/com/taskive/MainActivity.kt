@@ -5,12 +5,13 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+// Hapus import yang tidak perlu seperti background, clip, dll jika hanya dipakai di AppBottomBar
+import androidx.compose.foundation.clickable // Mungkin masih dipakai di AppBottomBar
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.* // Pastikan Home, ShoppingCart, Person ada di sini
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,37 +25,39 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination // Penting untuk AppBottomBar
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState // Penting untuk AppBottomBar
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 
-// Definisikan warna global atau impor dari theme jika ada
+// Definisikan warna global
 val DarkPurple = Color(0xFF3A006A)
-val MediumPurpleLight = Color(0xFF7B52AB)
+val MediumPurpleLight = Color(0xFF7B52AB) // Mungkin tidak dipakai lagi di sini
 
-// Konstanta untuk kunci argumen navigasi, bisa diakses dari file lain
-const val NAV_ARG_SHOW_DIALOG = "showDialog"
+// Konstanta untuk argumen navigasi (jika ada layar lain yang butuh, jika tidak, bisa lokal)
+// Untuk sekarang TasksScreen tidak lagi mengambil argumen ini dari MainActivity
+// const val NAV_ARG_SHOW_DIALOG = "showDialog"
 
-sealed class Screen(val route: String, val icon: ImageVector?, val label: String) {
+// Hanya 4 Screen utama untuk BottomAppBar
+sealed class Screen(val route: String, val icon: ImageVector, val label: String) { // Icon tidak lagi nullable
     data object Dashboard : Screen("dashboard", Icons.Default.Home, "Home")
     data object Tasks : Screen("tasks", Icons.AutoMirrored.Filled.List, "Tasks")
-    data object AddTask : Screen("addTask", Icons.Default.Add, "Add Task Action")
+    // AddTask dihapus dari sini
     data object Store : Screen("store", Icons.Default.ShoppingCart, "Store")
     data object Profile : Screen("profile", Icons.Default.Person, "Profile")
 }
 
+// Hanya 4 item untuk BottomAppBar
 val bottomNavItems = listOf(
     Screen.Dashboard,
     Screen.Tasks,
-    Screen.AddTask,
     Screen.Store,
     Screen.Profile,
 )
@@ -77,6 +80,7 @@ fun TaskiveApp() {
 
     Scaffold(
         bottomBar = { AppBottomBar(navController = navController) }
+        // Tidak ada FAB global
     ) { innerPadding ->
         AppNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
     }
@@ -89,25 +93,13 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
-        composable(Screen.Dashboard.route) {
-            DashboardScreen()
-        }
-        composable(
-            route = "${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG={showDialog}", // Menggunakan konstanta
-            arguments = listOf(navArgument(NAV_ARG_SHOW_DIALOG) { // Menggunakan konstanta
-                type = NavType.BoolType
-                defaultValue = false
-            })
-        ) {
-            // Pemanggilan TasksScreen sudah benar, ViewModel akan mengambil argumen
+        composable(Screen.Dashboard.route) { DashboardScreen() }
+        composable(Screen.Tasks.route) { // Rute Tasks sekarang sederhana
             TasksScreen(navController = navController)
         }
-        composable(Screen.Store.route) {
-            PlaceholderScreen(name = "Store")
-        }
-        composable(Screen.Profile.route) {
-            PlaceholderScreen(name = "Profile")
-        }
+        // Tidak ada lagi composable untuk AddTask di sini
+        composable(Screen.Store.route) { PlaceholderScreen(name = "Store") }
+        composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
     }
 }
 
@@ -126,76 +118,44 @@ fun AppBottomBar(navController: NavHostController) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
+                .height(80.dp), // Atau tinggi yang Anda inginkan
+            horizontalArrangement = Arrangement.SpaceAround, // Atau SpaceEvenly
             verticalAlignment = Alignment.CenterVertically
         ) {
-            bottomNavItems.forEach { screen ->
+            bottomNavItems.forEach { screen -> // Sekarang iterasi 4 item
                 val isSelected = currentDestination?.hierarchy?.any { navDest ->
                     navDest.route?.startsWith(screen.route) == true
-                } == true && screen.route != Screen.AddTask.route
+                } == true
 
-                val onClickAction: () -> Unit = {
-                    Log.d("AppBottomBar", "Clicked: ${screen.label}, Current: ${currentDestination?.route}, Target: ${screen.route}")
-                    if (screen == Screen.AddTask) {
-                        Log.d("AppBottomBar", "Navigating to Tasks with dialog")
-                        navController.navigate("${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG=true") { // Menggunakan konstanta
-                            launchSingleTop = true
-                        }
-                    } else if (screen == Screen.Dashboard) {
-                        Log.d("AppBottomBar", "Handling Dashboard click")
-                        if (currentDestination?.route != screen.route) {
-                            Log.d("AppBottomBar", "Popping back to Dashboard")
-                            navController.popBackStack(Screen.Dashboard.route, inclusive = false)
+                IconButton( // Semua item sekarang IconButton standar
+                    onClick = {
+                        Log.d("AppBottomBar", "Clicked: ${screen.label}, Current: ${currentDestination?.route}, Target: ${screen.route}")
+                        if (screen == Screen.Dashboard) {
+                            if (currentDestination?.route != screen.route) {
+                                navController.popBackStack(Screen.Dashboard.route, inclusive = false)
+                            }
                         } else {
-                            Log.d("AppBottomBar", "Already on Dashboard")
-                        }
-                    } else {
-                        Log.d("AppBottomBar", "Navigating to main tab: ${screen.label}")
-                        val startDestinationRoute = navController.graph.findStartDestination().route
-                        if (startDestinationRoute != null) {
-                            navController.navigate(screen.route) {
-                                popUpTo(startDestinationRoute) {
-                                    saveState = false
+                            val startDestinationRoute = navController.graph.findStartDestination().route
+                            if (startDestinationRoute != null) {
+                                navController.navigate(screen.route) {
+                                    popUpTo(startDestinationRoute) {
+                                        saveState = false // Untuk stabilitas
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = false // Untuk stabilitas
                                 }
-                                launchSingleTop = true
-                                restoreState = false
-                            }
-                        } else {
-                            navController.navigate(screen.route) {
-                                launchSingleTop = true
+                            } else {
+                                navController.navigate(screen.route) { launchSingleTop = true }
                             }
                         }
-                    }
-                }
-
-                if (screen == Screen.AddTask) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(MediumPurpleLight)
-                            .clickable(onClick = onClickAction),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = screen.icon!!,
-                            contentDescription = screen.label,
-                            tint = Color.White,
-                            modifier = Modifier.size(30.dp)
-                        )
-                    }
-                } else {
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight() // Bagi rata dan isi tinggi
+                ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable(onClick = onClickAction)
-                            .padding(vertical = 4.dp)
+                        verticalArrangement = Arrangement.Center
                     ) {
-                        Box(
+                        Box( // Box indikator
                             modifier = Modifier
                                 .height(32.dp)
                                 .wrapContentWidth()
@@ -205,8 +165,8 @@ fun AppBottomBar(navController: NavHostController) {
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = screen.icon!!,
-                                contentDescription = null,
+                                imageVector = screen.icon, // Icon tidak lagi nullable
+                                contentDescription = screen.label, // Content desc dari label
                                 tint = if (isSelected) Color.White else Color.White.copy(alpha = 0.6f)
                             )
                         }
