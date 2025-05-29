@@ -34,6 +34,7 @@ import androidx.navigation.navArgument // <-- Import untuk navArgument
 // import com.taskive.ui.addtask.AddTaskScreen // <-- Tidak digunakan lagi sebagai layar terpisah
 import com.taskive.ui.dashboard.DashboardScreen
 import com.taskive.ui.tasks.TasksScreen // <-- Import TasksScreen baru
+import com.taskive.ui.store.StoreScreen // <-- Import StoreScreen baru
 import com.taskive.ui.theme.TaskiveTheme
 
 val DarkPurple = Color(0xFF3A006A)
@@ -99,7 +100,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
             TasksScreen(navController = navController, showAddTaskPopupOnEntry = showDialog)
         }
         // composable(Screen.AddTask.route) { AddTaskScreen() } // <-- HAPUS INI
-        composable(Screen.Store.route) { PlaceholderScreen(name = "Store") }
+        composable(Screen.Store.route) { StoreScreen() } //Routing ke StoreScreen.kt
         composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
     }
 }
@@ -134,23 +135,20 @@ fun AppBottomBar(navController: NavHostController) {
 
 
                 val onClickAction: () -> Unit = {
-                    if (screen == Screen.AddTask) {
-                        // Navigasi ke TasksScreen dan minta dialog untuk muncul
-                        navController.navigate("${Screen.Tasks.route}?showDialog=true") {
-                            launchSingleTop = true // Hindari TasksScreen bertumpuk jika sudah terbuka
-                        }
-                    } else if (screen == Screen.Dashboard) {
-                        if (currentDestination?.route != screen.route) {
-                            navController.popBackStack(Screen.Dashboard.route, inclusive = false)
-                        }
-                    } else {
-                        navController.navigate(screen.route) {
-                            val startDestinationRoute = navController.graph.findStartDestination().route
-                            if (startDestinationRoute != null) {
-                                popUpTo(startDestinationRoute) {}
+                    when (screen) {
+                        Screen.AddTask -> {
+                            navController.navigate("${Screen.Tasks.route}?showDialog=true") {
+                                launchSingleTop = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+                        }
+                        else -> {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
                         }
                     }
                 }
@@ -226,3 +224,4 @@ fun PlaceholderScreen(name: String) {
         )
     }
 }
+
