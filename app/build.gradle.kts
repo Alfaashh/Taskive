@@ -2,6 +2,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose") // Ini cara standar untuk plugin Compose
+    kotlin("kapt")
 }
 
 android {
@@ -70,6 +71,12 @@ dependencies {
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.play.services.tasks) // Ini yang memerlukan desugaring
+    implementation(libs.android.gif.drawable) // Ini memungkinkan penggunaan gif
+    implementation (libs.glide)
+    implementation (libs.android.gif.drawable.v1227) // Untuk GifImageView
+    kapt (libs.compiler)  // Jika kamu nanti pakai anotasi Glide
+    implementation(libs.coil.compose)
+    implementation(libs.coil.gif)    // Tambahan untuk dukungan GIF
     coreLibraryDesugaring(libs.desugar.jdk.libs) // <-- DIPASTIKAN ADA
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
