@@ -5,13 +5,12 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-// Hapus import yang tidak perlu seperti background, clip, dll jika hanya dipakai di AppBottomBar
-import androidx.compose.foundation.clickable // Mungkin masih dipakai di AppBottomBar
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
-import androidx.compose.material.icons.filled.* // Pastikan Home, ShoppingCart, Person ada di sini
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
@@ -36,6 +36,7 @@ import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
+import com.taskive.ui.viewmodel.TaskViewModel
 
 // Definisikan warna global
 val DarkPurple = Color(0xFF3A006A)
@@ -88,16 +89,22 @@ fun TaskiveApp() {
 
 @Composable
 fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
+    val taskViewModel: TaskViewModel = viewModel()
+
     NavHost(
         navController = navController,
         startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
-        composable(Screen.Dashboard.route) { DashboardScreen() }
-        composable(Screen.Tasks.route) { // Rute Tasks sekarang sederhana
-            TasksScreen(navController = navController)
+        composable(Screen.Dashboard.route) {
+            DashboardScreen(
+                navController = navController,
+                taskViewModel = taskViewModel
+            )
         }
-        // Tidak ada lagi composable untuk AddTask di sini
+        composable(Screen.Tasks.route) {
+            TasksScreen(taskViewModel = taskViewModel)
+        }
         composable(Screen.Store.route) { PlaceholderScreen(name = "Store") }
         composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
     }
@@ -118,8 +125,8 @@ fun AppBottomBar(navController: NavHostController) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp), // Atau tinggi yang Anda inginkan
-            horizontalArrangement = Arrangement.SpaceAround, // Atau SpaceEvenly
+                .height(80.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomNavItems.forEach { screen -> // Sekarang iterasi 4 item
@@ -127,7 +134,7 @@ fun AppBottomBar(navController: NavHostController) {
                     navDest.route?.startsWith(screen.route) == true
                 } == true
 
-                IconButton( // Semua item sekarang IconButton standar
+                IconButton(
                     onClick = {
                         Log.d("AppBottomBar", "Clicked: ${screen.label}, Current: ${currentDestination?.route}, Target: ${screen.route}")
                         if (screen == Screen.Dashboard) {

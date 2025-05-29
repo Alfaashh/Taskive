@@ -75,11 +75,14 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
+    implementation(libs.androidx.runtime.saveable)
 
     val room_version = "2.6.1"
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
+
+    implementation("com.google.code.gson:gson:2.10.1")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
