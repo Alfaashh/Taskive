@@ -1,6 +1,7 @@
 package com.taskive
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -25,31 +26,31 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType // <-- Import untuk NavType
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument // <-- Import untuk navArgument
-// import com.taskive.ui.addtask.AddTaskScreen // <-- Tidak digunakan lagi sebagai layar terpisah
+import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
-import com.taskive.ui.tasks.TasksScreen // <-- Import TasksScreen baru
-import com.taskive.ui.store.StoreScreen // <-- Import StoreScreen baru
+import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 
+// Definisikan warna di sini atau impor dari theme/Color.kt Anda
 val DarkPurple = Color(0xFF3A006A)
 val MediumPurpleLight = Color(0xFF7B52AB)
 
-// Screen.AddTask tetap ada untuk merepresentasikan tombol '+'
+// --- KONSTANTA UNTUK ARGUMEN NAVIGASI ---
+const val NAV_ARG_SHOW_DIALOG = "showDialog" // Kita gunakan nama ini secara konsisten
+
 sealed class Screen(val route: String, val icon: ImageVector?, val label: String) {
     data object Dashboard : Screen("dashboard", Icons.Default.Home, "Home")
     data object Tasks : Screen("tasks", Icons.AutoMirrored.Filled.List, "Tasks")
-    data object AddTask : Screen("addTask", Icons.Default.Add, "Add Task Action") // Label bisa diubah
+    data object AddTask : Screen("addTask", Icons.Default.Add, "Add Task Action")
     data object Store : Screen("store", Icons.Default.ShoppingCart, "Store")
     data object Profile : Screen("profile", Icons.Default.Person, "Profile")
 }
 
-// bottomNavItems tetap sama, AddTask adalah tombol aksi
 val bottomNavItems = listOf(
     Screen.Dashboard,
     Screen.Tasks,
@@ -88,20 +89,24 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
-        composable(Screen.Dashboard.route) { DashboardScreen() }
+        composable(Screen.Dashboard.route) {
+            DashboardScreen()
+        }
         composable(
-            route = "${Screen.Tasks.route}?showDialog={showDialog}", // Terima argumen
-            arguments = listOf(navArgument("showDialog") {
+            route = "${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG={showDialog}", // <-- Menggunakan NAV_ARG_SHOW_DIALOG
+            arguments = listOf(navArgument(NAV_ARG_SHOW_DIALOG) { // <-- Menggunakan NAV_ARG_SHOW_DIALOG
                 type = NavType.BoolType
                 defaultValue = false
             })
-        ) { backStackEntry ->
-            val showDialog = backStackEntry.arguments?.getBoolean("showDialog") ?: false
-            TasksScreen(navController = navController, showAddTaskPopupOnEntry = showDialog)
+        ) {
+            TasksScreen(navController = navController)
         }
-        // composable(Screen.AddTask.route) { AddTaskScreen() } // <-- HAPUS INI
-        composable(Screen.Store.route) { StoreScreen() } //Routing ke StoreScreen.kt
-        composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
+        composable(Screen.Store.route) {
+            PlaceholderScreen(name = "Store")
+        }
+        composable(Screen.Profile.route) {
+            PlaceholderScreen(name = "Profile")
+        }
     }
 }
 
@@ -111,10 +116,12 @@ fun AppBottomBar(navController: NavHostController) {
         containerColor = DarkPurple,
         contentColor = Color.White.copy(alpha = 0.6f),
         tonalElevation = 8.dp,
-        modifier = Modifier.navigationBarsPadding()
+        modifier = Modifier
+            .navigationBarsPadding()
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
+        Log.d("AppBottomBar", "Current Destination: ${currentDestination?.route}")
 
         Row(
             modifier = Modifier
@@ -124,30 +131,40 @@ fun AppBottomBar(navController: NavHostController) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             bottomNavItems.forEach { screen ->
-                // Untuk isSelected, AddTask tidak akan pernah benar-benar "selected"
-                // karena ia menavigasi ke TasksScreen
-                val isSelected = currentDestination?.hierarchy?.any {
-                    it.route == screen.route ||
-                            // Jika tujuan saat ini adalah Tasks dan tombolnya adalah AddTask,
-                            // anggap AddTask tidak selected.
-                            (it.route?.startsWith(Screen.Tasks.route) == true && screen.route == Screen.AddTask.route)
+                val isSelected = currentDestination?.hierarchy?.any { navDest ->
+                    navDest.route?.startsWith(screen.route) == true
                 } == true && screen.route != Screen.AddTask.route
 
 
                 val onClickAction: () -> Unit = {
-                    when (screen) {
-                        Screen.AddTask -> {
-                            navController.navigate("${Screen.Tasks.route}?showDialog=true") {
-                                launchSingleTop = true
-                            }
+                    Log.d("AppBottomBar", "Clicked: ${screen.label}, Current: ${currentDestination?.route}, Target: ${screen.route}")
+                    if (screen == Screen.AddTask) {
+                        Log.d("AppBottomBar", "Navigating to Tasks with dialog")
+                        navController.navigate("${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG=true") { // <-- Menggunakan NAV_ARG_SHOW_DIALOG
+                            launchSingleTop = true
                         }
-                        else -> {
+                    } else if (screen == Screen.Dashboard) {
+                        Log.d("AppBottomBar", "Handling Dashboard click")
+                        if (currentDestination?.route != screen.route) {
+                            Log.d("AppBottomBar", "Popping back to Dashboard")
+                            navController.popBackStack(Screen.Dashboard.route, inclusive = false)
+                        } else {
+                            Log.d("AppBottomBar", "Already on Dashboard")
+                        }
+                    } else {
+                        Log.d("AppBottomBar", "Navigating to main tab: ${screen.label}")
+                        val startDestinationRoute = navController.graph.findStartDestination().route
+                        if (startDestinationRoute != null) {
                             navController.navigate(screen.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
+                                popUpTo(startDestinationRoute) {
+                                    saveState = false
                                 }
                                 launchSingleTop = true
-                                restoreState = true
+                                restoreState = false
+                            }
+                        } else {
+                            navController.navigate(screen.route) {
+                                launchSingleTop = true
                             }
                         }
                     }
@@ -224,4 +241,3 @@ fun PlaceholderScreen(name: String) {
         )
     }
 }
-

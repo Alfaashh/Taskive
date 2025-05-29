@@ -2,12 +2,13 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose") // Ini cara standar untuk plugin Compose
-    kotlin("kapt")
+    kotlin("kapt") // Biarkan jika masih dipakai Glide
+    id("com.google.devtools.ksp") // <-- HAPUS 'version "1.9.23-1.0.19"' DARI SINI
 }
 
 android {
     namespace = "com.taskive"
-    compileSdk = 35 // Sesuai dengan yang Anda gunakan
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.taskive"
@@ -24,7 +25,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false // Anda set false, bisa diubah ke true dengan ProGuard
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -34,8 +35,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
-        // Aktifkan Core Library Desugaring
-        isCoreLibraryDesugaringEnabled = true // <-- DIPASTIKAN ADA
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "11"
@@ -44,9 +44,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14" // <-- SESUAIKAN DENGAN VERSI COMPOSE BOM ANDA
-        // Jika menggunakan Compose BOM, ini seringkali tidak perlu didefinisikan eksplisit
-        // Untuk Compose BOM 2024.05.00, versi compiler bisa 1.5.14 atau cek dokumentasi
+        kotlinCompilerExtensionVersion = "1.5.14" // Sesuaikan
     }
     packagingOptions {
         resources {
@@ -56,28 +54,38 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom)) // Menggunakan BOM sangat direkomendasikan
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
-    // implementation(libs.androidx.ui.tooling.preview) // Sebaiknya debugImplementation
-    debugImplementation(libs.androidx.ui.tooling.preview) // <-- Diubah ke debugImplementation
-    implementation(libs.androidx.material3) // Ini adalah dependensi Material 3 utama
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.material3) // Ini kemungkinan duplikat dari libs.androidx.material3, bisa dihapus jika sama
+    implementation(libs.androidx.compose.navigation)
+    // implementation(libs.androidx.compose.navigation) // Ini sepertinya duplikat dengan libs.androidx.navigation.compose
+    debugImplementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.navigation.compose) // Ini yang benar untuk navigation compose
+    // implementation(libs.material3) // Kemungkinan duplikat, periksa libs.versions.toml Anda. Jika sama dengan androidx.material3, hapus.
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
-    implementation(libs.play.services.tasks) // Ini yang memerlukan desugaring
-    implementation(libs.android.gif.drawable) // Ini memungkinkan penggunaan gif
-    implementation (libs.glide)
-    implementation (libs.android.gif.drawable.v1227) // Untuk GifImageView
-    kapt (libs.compiler)  // Jika kamu nanti pakai anotasi Glide
+    implementation(libs.play.services.tasks)
+    implementation(libs.android.gif.drawable)
+    implementation(libs.glide)
+    // implementation(libs.android.gif.drawable.v1227) // Cek apakah ini benar-benar perlu atau versi utama sudah cukup
+    kapt(libs.compiler)
     implementation(libs.coil.compose)
-    implementation(libs.coil.gif)    // Tambahan untuk dukungan GIF
-    coreLibraryDesugaring(libs.desugar.jdk.libs) // <-- DIPASTIKAN ADA
+    implementation(libs.coil.gif)
+
+    // Pastikan libs.desugar.jdk.libs terdefinisi di libs.versions.toml
+    // Jika tidak, gunakan string langsung: "com.android.tools:desugar_jdk_libs:2.0.4" (cek versi terbaru)
+    coreLibraryDesugaring(libs.desugar.jdk.libs)
+
+    // --- ROOM PERSISTENCE LIBRARY (Contoh jika belum ada di libs.versions.toml) ---
+    val room_version = "2.6.1"
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler) // Menggunakan KSP untuk Room compiler
+    implementation(libs.androidx.room.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
