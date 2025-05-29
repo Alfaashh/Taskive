@@ -1,9 +1,9 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose") // Ini cara standar untuk plugin Compose
-    kotlin("kapt") // Biarkan jika masih dipakai Glide
-    id("com.google.devtools.ksp") // <-- HAPUS 'version "1.9.23-1.0.19"' DARI SINI
+    id("org.jetbrains.kotlin.plugin.compose")
+    kotlin("kapt") // Untuk Glide
+    id("com.google.devtools.ksp") // Versi sudah di level proyek
 }
 
 android {
@@ -16,7 +16,6 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
@@ -43,9 +42,9 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14" // Sesuaikan
-    }
+    // composeOptions {
+    //     kotlinCompilerExtensionVersion = "..." // Coba hapus/komentari ini dulu jika pakai Kotlin 2.0 dan BOM terbaru
+    // }
     packagingOptions {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -60,30 +59,26 @@ dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.compose.navigation)
-    // implementation(libs.androidx.compose.navigation) // Ini sepertinya duplikat dengan libs.androidx.navigation.compose
     debugImplementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.navigation.compose) // Ini yang benar untuk navigation compose
-    // implementation(libs.material3) // Kemungkinan duplikat, periksa libs.versions.toml Anda. Jika sama dengan androidx.material3, hapus.
+    implementation(libs.androidx.material3) // Gunakan yang ini (dari BOM)
+    // implementation(libs.material3) // HAPUS INI JIKA DUPLIKAT
+    implementation(libs.androidx.navigation.compose) // Navigasi untuk HP/Tablet
+    // implementation(libs.androidx.compose.navigation) // HAPUS INI JIKA BUKAN WEAR OS
+
     implementation(libs.androidx.material.icons.core)
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.play.services.tasks)
     implementation(libs.android.gif.drawable)
     implementation(libs.glide)
-    // implementation(libs.android.gif.drawable.v1227) // Cek apakah ini benar-benar perlu atau versi utama sudah cukup
+    // implementation(libs.android.gif.drawable.v1227) // Pertimbangkan untuk menghapus jika tidak spesifik dibutuhkan
     kapt(libs.compiler)
     implementation(libs.coil.compose)
     implementation(libs.coil.gif)
-
-    // Pastikan libs.desugar.jdk.libs terdefinisi di libs.versions.toml
-    // Jika tidak, gunakan string langsung: "com.android.tools:desugar_jdk_libs:2.0.4" (cek versi terbaru)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
-    // --- ROOM PERSISTENCE LIBRARY (Contoh jika belum ada di libs.versions.toml) ---
     val room_version = "2.6.1"
     implementation(libs.androidx.room.runtime)
-    ksp(libs.androidx.room.compiler) // Menggunakan KSP untuk Room compiler
+    ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.room.ktx)
 
     testImplementation(libs.junit)

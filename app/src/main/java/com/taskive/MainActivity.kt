@@ -24,24 +24,24 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavDestination.Companion.hierarchy
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraph.Companion.findStartDestination // Penting untuk AppBottomBar
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.currentBackStackEntryAsState // Penting untuk AppBottomBar
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 
-// Definisikan warna di sini atau impor dari theme/Color.kt Anda
+// Definisikan warna global atau impor dari theme jika ada
 val DarkPurple = Color(0xFF3A006A)
 val MediumPurpleLight = Color(0xFF7B52AB)
 
-// --- KONSTANTA UNTUK ARGUMEN NAVIGASI ---
-const val NAV_ARG_SHOW_DIALOG = "showDialog" // Kita gunakan nama ini secara konsisten
+// Konstanta untuk kunci argumen navigasi, bisa diakses dari file lain
+const val NAV_ARG_SHOW_DIALOG = "showDialog"
 
 sealed class Screen(val route: String, val icon: ImageVector?, val label: String) {
     data object Dashboard : Screen("dashboard", Icons.Default.Home, "Home")
@@ -93,12 +93,13 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
             DashboardScreen()
         }
         composable(
-            route = "${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG={showDialog}", // <-- Menggunakan NAV_ARG_SHOW_DIALOG
-            arguments = listOf(navArgument(NAV_ARG_SHOW_DIALOG) { // <-- Menggunakan NAV_ARG_SHOW_DIALOG
+            route = "${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG={showDialog}", // Menggunakan konstanta
+            arguments = listOf(navArgument(NAV_ARG_SHOW_DIALOG) { // Menggunakan konstanta
                 type = NavType.BoolType
                 defaultValue = false
             })
         ) {
+            // Pemanggilan TasksScreen sudah benar, ViewModel akan mengambil argumen
             TasksScreen(navController = navController)
         }
         composable(Screen.Store.route) {
@@ -116,8 +117,7 @@ fun AppBottomBar(navController: NavHostController) {
         containerColor = DarkPurple,
         contentColor = Color.White.copy(alpha = 0.6f),
         tonalElevation = 8.dp,
-        modifier = Modifier
-            .navigationBarsPadding()
+        modifier = Modifier.navigationBarsPadding()
     ) {
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentDestination = navBackStackEntry?.destination
@@ -135,12 +135,11 @@ fun AppBottomBar(navController: NavHostController) {
                     navDest.route?.startsWith(screen.route) == true
                 } == true && screen.route != Screen.AddTask.route
 
-
                 val onClickAction: () -> Unit = {
                     Log.d("AppBottomBar", "Clicked: ${screen.label}, Current: ${currentDestination?.route}, Target: ${screen.route}")
                     if (screen == Screen.AddTask) {
                         Log.d("AppBottomBar", "Navigating to Tasks with dialog")
-                        navController.navigate("${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG=true") { // <-- Menggunakan NAV_ARG_SHOW_DIALOG
+                        navController.navigate("${Screen.Tasks.route}?$NAV_ARG_SHOW_DIALOG=true") { // Menggunakan konstanta
                             launchSingleTop = true
                         }
                     } else if (screen == Screen.Dashboard) {

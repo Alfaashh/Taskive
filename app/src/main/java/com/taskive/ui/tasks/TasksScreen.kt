@@ -24,17 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.wear.compose.navigation.currentBackStackEntryAsState
-import com.taskive.NAV_ARG_SHOW_DIALOG // Impor konstanta dari MainActivity
-// import com.taskive.Screen // Tidak dipakai langsung di sini jika NAV_ARG_SHOW_DIALOG diimpor
+// Hapus import com.taskive.Screen jika tidak ada referensi lain ke data object Screen di file ini
+// import com.taskive.NAV_ARG_SHOW_DIALOG // Tidak perlu diimpor jika sudah di ViewModel dan NavHost
 import java.text.SimpleDateFormat
 import java.util.*
 
-// TasksScreen Composable (dari respons sebelumnya, tidak ada perubahan di sini)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
@@ -42,31 +39,10 @@ fun TasksScreen(
     viewModel: TasksViewModel = viewModel()
 ) {
     val showDialogState by viewModel.showAddTaskDialogFlow.collectAsState()
-    Log.d("TasksScreen", "Recomposing. showDialog state from ViewModel: $showDialogState")
+    Log.d("TasksScreen", "Recomposing. showDialog state from ViewModel: $showDialogState. VM instance: $viewModel")
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val showDialogFromNavArg = navBackStackEntry?.arguments?.getBoolean(NAV_ARG_SHOW_DIALOG) ?: false
-
-    LaunchedEffect(navBackStackEntry) {
-        Log.d("TasksScreen", "LaunchedEffect: current NBE changed. showDialogFromNavArg from NavHost args: $showDialogFromNavArg. VM instance: $viewModel")
-        viewModel.processShowDialogNavArgument(showDialogFromNavArg)
-
-        if (showDialogFromNavArg) {
-            val currentRouteBase = navController.currentDestination?.route?.substringBefore('?') ?: navController.graph.findStartDestination().route!! // Fallback ke start destination jika route null
-            if (navController.currentBackStackEntry?.arguments?.getBoolean(NAV_ARG_SHOW_DIALOG) == true) {
-                Log.d("TasksScreen", "Consuming nav arg by navigating to $currentRouteBase?$NAV_ARG_SHOW_DIALOG=false")
-                navController.navigate("$currentRouteBase?$NAV_ARG_SHOW_DIALOG=false") {
-                    val currentNavEntryId = navBackStackEntry?.destination?.id
-                    if (currentNavEntryId != null) {
-                        popUpTo(currentNavEntryId) {
-                            inclusive = true
-                        }
-                    }
-                    launchSingleTop = true
-                }
-            }
-        }
-    }
+    // ViewModel sekarang menangani logika kemunculan dialog awal berdasarkan SavedStateHandle
+    // Tidak ada LaunchedEffect di sini untuk memicu dialog berdasarkan argumen navigasi.
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -75,7 +51,7 @@ fun TasksScreen(
                 .background(MaterialTheme.colorScheme.background)
                 .then(
                     if (showDialogState && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        Modifier.blur(radius = 10.dp)
+                        Modifier.blur(radius = 10.dp) // Tanpa edgeTreatment
                     } else if (showDialogState) {
                         Modifier.background(Color.Black.copy(alpha = 0.3f))
                     } else {
@@ -89,7 +65,7 @@ fun TasksScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = {
                 Log.d("TasksScreen", "Test Munculkan Dialog Manual button clicked")
-                viewModel.requestShowDialogExplicitly()
+                viewModel.requestShowAddTaskDialogExplicitly()
             }) {
                 Text("Test Munculkan Dialog Manual")
             }
@@ -111,8 +87,6 @@ fun TasksScreen(
     }
 }
 
-
-// VVV BAGIAN AddTaskDialog YANG SEHARUSNYA LENGKAP VVV
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddTaskDialog(
@@ -124,19 +98,11 @@ fun AddTaskDialog(
 
     var selectedDateText by rememberSaveable { mutableStateOf("Select Date") }
     var showDatePicker by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState(
-        // Anda bisa mengatur initialSelectedDateMillis di sini jika perlu
-        // initialSelectedDateMillis = System.currentTimeMillis()
-    )
+    val datePickerState = rememberDatePickerState()
 
     var selectedTimeText by rememberSaveable { mutableStateOf("Select Time") }
     var showTimePicker by remember { mutableStateOf(false) }
-    val timePickerState = rememberTimePickerState(
-        // Anda bisa mengatur initialHour dan initialMinute di sini
-        // initialHour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY),
-        // initialMinute = Calendar.getInstance().get(Calendar.MINUTE),
-        is24Hour = true // Sesuaikan dengan format yang Anda inginkan
-    )
+    val timePickerState = rememberTimePickerState(is24Hour = true)
 
     val configuration = LocalConfiguration.current
     val dialogWidth = (configuration.screenWidthDp * 0.9f).dp
@@ -185,9 +151,9 @@ fun AddTaskDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable { showDatePicker = true },
-                        shape = RoundedCornerShape(4.dp), // Bentuk standar OutlinedTextField
+                        shape = RoundedCornerShape(4.dp),
                         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        color = MaterialTheme.colorScheme.surface // Atau surfaceVariant
+                        color = MaterialTheme.colorScheme.surface
                     ) {
                         Row(
                             modifier = Modifier
@@ -265,7 +231,6 @@ fun AddTaskDialog(
         }
     }
 
-    // DatePickerDialog
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -275,7 +240,7 @@ fun AddTaskDialog(
                     datePickerState.selectedDateMillis?.let { millis ->
                         val calendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
                         calendar.timeInMillis = millis
-                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) // Format tanggal standar
+                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
                         selectedDateText = sdf.format(calendar.time)
                     }
                 }) { Text("OK") }
@@ -288,26 +253,25 @@ fun AddTaskDialog(
         }
     }
 
-    // TimePickerDialog (dibungkus Dialog generik karena TimePickerDialog M3 bisa sedikit berbeda cara pakainya)
     if (showTimePicker) {
-        Dialog(onDismissRequest = { showTimePicker = false }) { // Dialog pembungkus untuk TimePicker
+        Dialog(onDismissRequest = { showTimePicker = false }) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 6.dp,
-                modifier = Modifier.padding(16.dp) // Padding di sekitar Surface
+                modifier = Modifier.padding(16.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(24.dp), // Padding di dalam Surface
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text("Select Time", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(20.dp))
-                    TimePicker(state = timePickerState) // Komponen TimePicker M3
+                    TimePicker(state = timePickerState)
                     Spacer(modifier = Modifier.height(20.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End // Tombol OK dan Cancel ke kanan
+                        horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showTimePicker = false }) { Text("Cancel") }
                         Spacer(modifier = Modifier.width(8.dp))
@@ -315,7 +279,7 @@ fun AddTaskDialog(
                             showTimePicker = false
                             selectedTimeText = String.format(
                                 Locale.getDefault(),
-                                "%02d:%02d", // Format HH:mm
+                                "%02d:%02d",
                                 timePickerState.hour,
                                 timePickerState.minute
                             )
