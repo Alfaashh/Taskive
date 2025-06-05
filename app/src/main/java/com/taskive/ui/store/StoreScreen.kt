@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.navigation.NavController
+import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.taskive.DarkPurple
@@ -32,13 +32,16 @@ import com.taskive.ui.dashboard.TextColorDarkGlobal
 import com.taskive.ui.theme.MediumPurpleLight
 import com.taskive.ui.theme.MediumPurpleDark
 import com.taskive.ui.theme.Nunito
+import com.taskive.ui.viewmodel.StoreViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StoreScreen(navController: NavController? = null) {
+fun StoreScreen(
+    navController: NavHostController,
+    storeViewModel: StoreViewModel
+) {
     var selectedCategory by remember { mutableStateOf(StoreCategory.PET) }
     var selectedItem by remember { mutableStateOf<StoreItem?>(null) }
-    var userCoins by remember { mutableStateOf(1452) }
 
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(MediumPurpleLight, MediumPurpleDark)
@@ -59,7 +62,7 @@ fun StoreScreen(navController: NavController? = null) {
                 )
             },
             navigationIcon = {
-                IconButton(onClick = { navController?.navigateUp() }) {
+                IconButton(onClick = { navController.navigateUp() }) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Back",
@@ -68,7 +71,7 @@ fun StoreScreen(navController: NavController? = null) {
                 }
             },
             actions = {
-                CoinBalance(userCoins)
+                CoinBalance(storeViewModel.coins.value)
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color(0xFFF5F5F5), // samakan dengan warna background layar
@@ -134,11 +137,10 @@ fun StoreScreen(navController: NavController? = null) {
                 selectedItem?.let { item ->
                     ItemDetailDialog(
                         item = item,
-                        userCoins = userCoins,
+                        userCoins = storeViewModel.coins.value,
                         coins = item.price,
                         onPurchase = {
-                            if (userCoins >= item.price) {
-                                userCoins -= item.price
+                            if (storeViewModel.purchaseItem(item)) {
                                 selectedItem = null
                             }
                         },

@@ -35,9 +35,9 @@ val TextColorLightGlobal = Color.Gray
 
 @Composable
 fun DashboardScreen(
-    navController: NavHostController = rememberNavController(),
+    navController: NavHostController,
     taskViewModel: TaskViewModel,
-    storeViewModel: StoreViewModel = viewModel()
+    storeViewModel: StoreViewModel
 ) {
     LazyColumn(
         modifier = Modifier

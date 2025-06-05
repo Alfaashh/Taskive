@@ -92,13 +92,20 @@ fun TaskiveApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(navController, taskViewModel, storeViewModel)
+                DashboardScreen(
+                    navController = navController,
+                    taskViewModel = taskViewModel,
+                    storeViewModel = storeViewModel
+                )
             }
             composable(Screen.Tasks.route) {
-                TasksScreen(taskViewModel)
+                TasksScreen(taskViewModel = taskViewModel)
             }
             composable(Screen.Store.route) {
-                StoreScreen(navController = navController, storeViewModel = storeViewModel)
+                StoreScreen(
+                    navController = navController,
+                    storeViewModel = storeViewModel
+                )
             }
             composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
         }
