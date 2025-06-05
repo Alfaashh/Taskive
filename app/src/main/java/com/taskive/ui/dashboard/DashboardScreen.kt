@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,10 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.taskive.DarkPurple
 import com.taskive.navigation.Screen
 import com.taskive.ui.theme.Nunito
 import com.taskive.ui.theme.MediumPurpleDark
@@ -286,29 +282,16 @@ private fun RecentTasksSection(
                 task = taskViewModel.selectedTask.value!!,
                 onDismissRequest = { taskViewModel.dismissEditTaskDialog() },
                 onDeleteTask = { taskViewModel.deleteTask(it) },
-                onUpdateTask = { taskId, title, datetime, daysLeft, description, isCompleted ->
-                    taskViewModel.updateTask(taskId, title, datetime, daysLeft, description, isCompleted)
+                onUpdateTask = { taskId, title, datetime, _, description, isCompleted ->
+                    taskViewModel.updateTask(
+                        taskId = taskId,
+                        title = title,
+                        datetime = datetime,
+                        description = description,
+                        isCompleted = isCompleted
+                    )
                 }
             )
         }
     }
 }
-
-@Composable
-private fun NoTasksPlaceholder() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No tasks available",
-            fontFamily = Nunito,
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            color = TextColorLightGlobal
-        )
-    }
-}
-

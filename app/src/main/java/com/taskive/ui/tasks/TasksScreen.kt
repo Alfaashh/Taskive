@@ -190,9 +190,7 @@ fun TasksScreen(
                     },
                     onTaskCreate = { title, date, time, description ->
                         val datetime = "$time, $date"
-                        // Calculate days left based on the selected date
-                        val daysLeft = calculateDaysLeft(date)
-                        taskViewModel.addTask(title, datetime, "$daysLeft days left", description)
+                        taskViewModel.addTask(title, datetime, description)
                     }
                 )
             }
@@ -202,8 +200,14 @@ fun TasksScreen(
                     task = taskViewModel.selectedTask.value!!,
                     onDismissRequest = { taskViewModel.dismissEditTaskDialog() },
                     onDeleteTask = { taskViewModel.deleteTask(it) },
-                    onUpdateTask = { taskId, title, datetime, daysLeft, description, isCompleted ->
-                        taskViewModel.updateTask(taskId, title, datetime, daysLeft, description, isCompleted)
+                    onUpdateTask = { taskId, title, datetime, _, description, isCompleted ->
+                        taskViewModel.updateTask(
+                            taskId = taskId,
+                            title = title,
+                            datetime = datetime,
+                            description = description,
+                            isCompleted = isCompleted
+                        )
                     }
                 )
             }
@@ -483,16 +487,6 @@ fun AddTaskDialog(
                 Button(
                     onClick = {
                         if (taskName.isNotEmpty()) {
-                            val datetime = if (selectedDateText != "Select Date" && selectedTimeText != "Select Time") {
-                                "$selectedTimeText, $selectedDateText"
-                            } else {
-                                ""
-                            }
-                            val daysLeft = if (selectedDateText != "Select Date") {
-                                calculateDaysLeft(selectedDateText)
-                            } else {
-                                ""
-                            }
                             onTaskCreate(
                                 taskName,
                                 selectedDateText,

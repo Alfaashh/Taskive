@@ -2,14 +2,13 @@ package com.taskive.ui.viewmodel
 
 import android.app.Application
 import android.content.Context
-import androidx.lifecycle.AndroidViewModel
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.AndroidViewModel
+import androidx.core.content.edit
 import com.google.gson.Gson
-import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Locale
 
 data class Task(
     val id: String = java.util.UUID.randomUUID().toString(),
@@ -21,6 +20,7 @@ data class Task(
 )
 
 class TaskViewModel(application: Application) : AndroidViewModel(application) {
+    private val storeViewModel: StoreViewModel = StoreViewModel(application)
     private val sharedPreferences = application.getSharedPreferences("taskive_tasks", Context.MODE_PRIVATE)
     private val gson = Gson()
 
@@ -64,16 +64,16 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun saveTasks() {
-        sharedPreferences.edit()
-            .putString("tasks", gson.toJson(_tasks.toList()))
-            .putInt("completed_count", _completedCount.value)
-            .apply()
+        sharedPreferences.edit {
+            putString("tasks", gson.toJson(_tasks.toList()))
+            putInt("completed_count", _completedCount.value)
+        }
     }
 
     private fun saveCompletedTasks() {
-        sharedPreferences.edit()
-            .putString("completed_tasks", gson.toJson(_completedTasks.toList()))
-            .apply()
+        sharedPreferences.edit {
+            putString("completed_tasks", gson.toJson(_completedTasks.toList()))
+        }
     }
 
     fun openAddTaskDialog() {
@@ -97,7 +97,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         _selectedTask.value = null
     }
 
-    fun addTask(title: String, datetime: String, daysLeft: String, description: String = "") {
+    fun addTask(title: String, datetime: String, description: String = "") {
         val dateTime = datetime.split(", ")
         val time = dateTime.getOrNull(0)
         val date = dateTime.getOrNull(1)
@@ -116,7 +116,6 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
         taskId: String,
         title: String,
         datetime: String,
-        daysLeft: String,
         description: String,
         isCompleted: Boolean
     ) {
@@ -127,6 +126,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 _tasks.removeAt(index)
                 _completedTasks.add(0, completedTask)
                 _completedCount.value += 1
+                storeViewModel.rewardTaskCompletion() // Reward coins for task completion
                 saveTasks()
                 saveCompletedTasks()
             } else {
