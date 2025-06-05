@@ -34,6 +34,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
+import com.taskive.ui.store.StoreScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 import com.taskive.ui.viewmodel.TaskViewModel
@@ -78,40 +79,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TaskiveApp() {
     val navController = rememberNavController()
-
-    Scaffold(
-        bottomBar = { AppBottomBar(navController = navController) }
-        // Tidak ada FAB global
-    ) { innerPadding ->
-        AppNavHost(navController = navController, modifier = Modifier.padding(innerPadding))
-    }
-}
-
-@Composable
-fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
     val taskViewModel: TaskViewModel = viewModel()
 
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Dashboard.route,
-        modifier = modifier
-    ) {
-        composable(Screen.Dashboard.route) {
-            DashboardScreen(
-                navController = navController,
-                taskViewModel = taskViewModel
-            )
+    Scaffold(
+        bottomBar = { TaskiveBottomBar(navController = navController) }
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = Screen.Dashboard.route,
+            modifier = Modifier.padding(innerPadding)
+        ) {
+            composable(Screen.Dashboard.route) {
+                DashboardScreen(navController, taskViewModel)
+            }
+            composable(Screen.Tasks.route) {
+                TasksScreen(taskViewModel)
+            }
+            composable(Screen.Store.route) {
+                StoreScreen(navController = navController)
+            }
+            composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
         }
-        composable(Screen.Tasks.route) {
-            TasksScreen(taskViewModel = taskViewModel)
-        }
-        composable(Screen.Store.route) { PlaceholderScreen(name = "Store") }
-        composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
     }
 }
 
 @Composable
-fun AppBottomBar(navController: NavHostController) {
+fun TaskiveBottomBar(navController: NavHostController) {
     BottomAppBar(
         containerColor = DarkPurple,
         contentColor = Color.White.copy(alpha = 0.6f),

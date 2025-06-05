@@ -215,7 +215,7 @@ fun StoreItemCard(item: StoreItem, coins: Int, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-        ) {
+        ){
             val painter = rememberAsyncImagePainter(
                 ImageRequest.Builder(LocalContext.current)
                     .data(item.imageRes)
