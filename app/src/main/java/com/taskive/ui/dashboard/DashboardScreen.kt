@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.taskive.navigation.Screen
@@ -25,6 +26,7 @@ import com.taskive.ui.theme.Nunito
 import com.taskive.ui.theme.MediumPurpleDark
 import com.taskive.ui.theme.MediumPurpleLight
 import com.taskive.ui.viewmodel.TaskViewModel
+import com.taskive.ui.viewmodel.StoreViewModel
 import com.taskive.ui.tasks.EditTaskDialog
 
 val LightPurpleBackground = Color(0xFFF8F6FF)
@@ -34,7 +36,8 @@ val TextColorLightGlobal = Color.Gray
 @Composable
 fun DashboardScreen(
     navController: NavHostController = rememberNavController(),
-    taskViewModel: TaskViewModel
+    taskViewModel: TaskViewModel,
+    storeViewModel: StoreViewModel = viewModel()
 ) {
     LazyColumn(
         modifier = Modifier
@@ -42,7 +45,7 @@ fun DashboardScreen(
             .background(LightPurpleBackground)
             .padding(horizontal = 20.dp)
     ) {
-        item { TopSection() }
+        item { TopSection(storeViewModel) }
         item { Spacer(modifier = Modifier.height(30.dp)) }
         item { GreetingSection() }
         item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -54,7 +57,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun TopSection() {
+private fun TopSection(storeViewModel: StoreViewModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -98,7 +101,7 @@ private fun TopSection() {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "240",
+                text = "${storeViewModel.coins.value}",
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,

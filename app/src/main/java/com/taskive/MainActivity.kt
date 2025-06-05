@@ -38,6 +38,7 @@ import com.taskive.ui.store.StoreScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 import com.taskive.ui.viewmodel.TaskViewModel
+import com.taskive.ui.viewmodel.StoreViewModel
 
 // Definisikan warna global
 val DarkPurple = Color(0xFF3A006A)
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
 fun TaskiveApp() {
     val navController = rememberNavController()
     val taskViewModel: TaskViewModel = viewModel()
+    val storeViewModel: StoreViewModel = viewModel()
 
     Scaffold(
         bottomBar = { TaskiveBottomBar(navController = navController) }
@@ -90,13 +92,13 @@ fun TaskiveApp() {
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(navController, taskViewModel)
+                DashboardScreen(navController, taskViewModel, storeViewModel)
             }
             composable(Screen.Tasks.route) {
                 TasksScreen(taskViewModel)
             }
             composable(Screen.Store.route) {
-                StoreScreen(navController = navController)
+                StoreScreen(navController = navController, storeViewModel = storeViewModel)
             }
             composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
         }
