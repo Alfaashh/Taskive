@@ -341,16 +341,16 @@ data class StoreItem(val name: String, val price: Int, val imageRes: Int)
 fun getItemsForCategory(category: StoreCategory): List<StoreItem> {
     return when (category) {
         StoreCategory.PET -> listOf(
-            StoreItem("Cat", 240, R.drawable.cat),
-            StoreItem("Penguin", 257, R.drawable.penguin),
-            StoreItem("Hamster", 200, R.drawable.cat),
-            StoreItem("Rabbit", 220, R.drawable.penguin)
+            StoreItem("Cat", 200, R.drawable.cat),
+            StoreItem("Penguin", 250, R.drawable.penguin),
+            StoreItem("Hamster", 228, R.drawable.cat),
+            StoreItem("Rabbit", 320, R.drawable.penguin)
         )
         StoreCategory.FOOD -> listOf(
-            StoreItem("Sushi", 257, R.drawable.sushi),
-            StoreItem("Tomato", 257, R.drawable.tomato),
-            StoreItem("Banana", 180, R.drawable.sushi),
-            StoreItem("Milk", 200, R.drawable.tomato)
+            StoreItem("Sushi", 30, R.drawable.sushi),
+            StoreItem("Tomato", 50, R.drawable.tomato),
+            StoreItem("Banana", 42, R.drawable.sushi),
+            StoreItem("Milk", 69420, R.drawable.tomato)
         )
     }
 }
