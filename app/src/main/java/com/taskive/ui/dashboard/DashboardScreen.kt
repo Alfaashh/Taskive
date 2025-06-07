@@ -18,20 +18,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.compose.rememberNavController
 import com.taskive.navigation.Screen
-import com.taskive.ui.theme.Nunito
-import com.taskive.ui.theme.MediumPurpleDark
-import com.taskive.ui.theme.MediumPurpleLight
+import com.taskive.ui.theme.*
 import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
 import com.taskive.ui.tasks.EditTaskDialog
-
-val LightPurpleBackground = Color(0xFFF8F6FF)
-val TextColorDarkGlobal = Color(0xFF333333)
-val TextColorLightGlobal = Color.Gray
 
 @Composable
 fun DashboardScreen(
@@ -66,18 +58,10 @@ private fun TopSection(storeViewModel: StoreViewModel) {
         verticalAlignment = Alignment.Top
     ) {
         val taskiveText = buildAnnotatedString {
-            withStyle(
-                style = SpanStyle(
-                    color = MediumPurpleDark
-                )
-            ) {
+            withStyle(style = SpanStyle(color = MediumPurpleDark)) {
                 append("TASK")
             }
-            withStyle(
-                style = SpanStyle(
-                    color = MediumPurpleLight
-                )
-            ) {
+            withStyle(style = SpanStyle(color = MediumPurpleLight)) {
                 append("IVE")
             }
         }
@@ -105,7 +89,7 @@ private fun TopSection(storeViewModel: StoreViewModel) {
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
-                color = TextColorDarkGlobal
+                color = TextColorDark
             )
         }
     }
@@ -123,12 +107,12 @@ private fun GreetingSection() {
             fontFamily = Nunito,
             fontWeight = FontWeight.Bold,
             fontSize = 30.sp,
-            color = TextColorDarkGlobal
+            color = TextColorDark
         )
         Text(
             text = "Monday, 30 May 2025",
             style = MaterialTheme.typography.bodyLarge,
-            color = TextColorLightGlobal,
+            color = TextColorLight,
             modifier = Modifier.padding(bottom = 4.dp)
         )
     }
@@ -198,7 +182,7 @@ private fun RecentTasksSection(
                 fontFamily = Nunito,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                color = TextColorDarkGlobal
+                color = TextColorDark
             )
             Text(
                 text = "See all",
@@ -222,7 +206,7 @@ private fun RecentTasksSection(
             Text(
                 text = "No tasks yet",
                 fontFamily = Nunito,
-                color = TextColorLightGlobal,
+                color = TextColorLight,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
         } else {

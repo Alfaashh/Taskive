@@ -19,8 +19,10 @@ data class Task(
     val isCompleted: Boolean = false
 )
 
-class TaskViewModel(application: Application) : AndroidViewModel(application) {
-    private val storeViewModel: StoreViewModel = StoreViewModel(application)
+class TaskViewModel(
+    application: Application,
+    private val storeViewModel: StoreViewModel
+) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("taskive_tasks", Context.MODE_PRIVATE)
     private val gson = Gson()
 
@@ -126,7 +128,7 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
                 _tasks.removeAt(index)
                 _completedTasks.add(0, completedTask)
                 _completedCount.value += 1
-                storeViewModel.rewardTaskCompletion() // Reward coins for task completion
+                storeViewModel.addCoins(10) // Reward 10 coins for completing a task
                 saveTasks()
                 saveCompletedTasks()
             } else {

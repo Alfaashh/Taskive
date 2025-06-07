@@ -1,6 +1,8 @@
 package com.taskive.ui.store
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -24,24 +26,30 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.NavHostController
+import coil.compose.AsyncImage
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.taskive.DarkPurple
-import com.taskive.R
-import com.taskive.ui.dashboard.TextColorDarkGlobal
+import com.taskive.model.StoreItem
 import com.taskive.ui.theme.MediumPurpleLight
 import com.taskive.ui.theme.MediumPurpleDark
 import com.taskive.ui.theme.Nunito
 import com.taskive.ui.viewmodel.StoreViewModel
+import com.taskive.ui.viewmodel.UserViewModel
+
+enum class StoreCategory {
+    PET, FOOD
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StoreScreen(
     navController: NavHostController,
-    storeViewModel: StoreViewModel
+    storeViewModel: StoreViewModel,
+    userViewModel: UserViewModel
 ) {
     var selectedCategory by remember { mutableStateOf(StoreCategory.PET) }
-    var selectedItem by remember { mutableStateOf<StoreItem?>(null) }
+    var selectedItem: StoreItem? by remember { mutableStateOf(null) }
 
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(MediumPurpleLight, MediumPurpleDark)
@@ -61,20 +69,11 @@ fun StoreScreen(
                     fontSize = 20.sp
                 )
             },
-            navigationIcon = {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Back",
-                        tint = DarkPurple
-                    )
-                }
-            },
             actions = {
                 CoinBalance(storeViewModel.coins.value)
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color(0xFFF5F5F5), // samakan dengan warna background layar
+                containerColor = Color(0xFFF5F5F5),
                 titleContentColor = DarkPurple
             )
         )
@@ -109,16 +108,24 @@ fun StoreScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.weight(1f)
         ) {
-            val items = getItemsForCategory(selectedCategory)
-            items(items, key = { it.name }) { item ->
-                StoreItemCard(item = item, coins = item.price) {
+            val items = when (selectedCategory) {
+                StoreCategory.PET -> storeViewModel.availablePets
+                StoreCategory.FOOD -> storeViewModel.availableFoods
+            }
+            items(items, key = { it.id }) { item ->
+                StoreItemCard(
+                    item = item,
+                    coins = item.price,
+                    isPurchased = selectedCategory == StoreCategory.PET &&
+                                storeViewModel.purchasedPetIds.value.contains(item.id)
+                ) {
                     selectedItem = item
                 }
             }
         }
     }
 
-    if (selectedItem != null) {
+    selectedItem?.let { item ->
         Dialog(
             onDismissRequest = { selectedItem = null },
             properties = DialogProperties(
@@ -134,19 +141,21 @@ fun StoreScreen(
                     .clickable(onClick = { selectedItem = null }),
                 contentAlignment = Alignment.Center
             ) {
-                selectedItem?.let { item ->
-                    ItemDetailDialog(
-                        item = item,
-                        userCoins = storeViewModel.coins.value,
-                        coins = item.price,
-                        onPurchase = {
-                            if (storeViewModel.purchaseItem(item)) {
-                                selectedItem = null
-                            }
-                        },
-                        brush = gradientBrush
-                    )
-                }
+                ItemDetailDialog(
+                    item = item,
+                    userCoins = storeViewModel.coins.value,
+                    isPurchased = selectedCategory == StoreCategory.PET &&
+                                storeViewModel.purchasedPetIds.value.contains(item.id),
+                    onPurchase = {
+                        if (selectedCategory == StoreCategory.PET) {
+                            storeViewModel.buyPet(item.id, userViewModel)
+                        } else {
+                            storeViewModel.purchaseItem(item)
+                        }
+                        selectedItem = null
+                    },
+                    brush = gradientBrush
+                )
             }
         }
     }
@@ -156,8 +165,7 @@ fun StoreScreen(
 fun CoinBalance(coins: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .padding(end = 16.dp)
+        modifier = Modifier.padding(end = 16.dp)
     ) {
         Box(
             modifier = Modifier
@@ -170,7 +178,7 @@ fun CoinBalance(coins: Int) {
             fontFamily = Nunito,
             fontWeight = FontWeight.Bold,
             fontSize = 18.sp,
-            color = TextColorDarkGlobal
+            color = Color.Black
         )
     }
 }
@@ -201,7 +209,12 @@ fun CategoryTab(
 }
 
 @Composable
-fun StoreItemCard(item: StoreItem, coins: Int, onClick: () -> Unit) {
+fun StoreItemCard(
+    item: StoreItem,
+    coins: Int,
+    isPurchased: Boolean,
+    onClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -217,14 +230,12 @@ fun StoreItemCard(item: StoreItem, coins: Int, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
-        ){
-            val painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(LocalContext.current)
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
                     .data(item.imageRes)
-                    .build()
-            )
-            Image(
-                painter = painter,
+                    .crossfade(true)
+                    .build(),
                 contentDescription = item.name,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
@@ -239,27 +250,43 @@ fun StoreItemCard(item: StoreItem, coins: Int, onClick: () -> Unit) {
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .background(Color(0xFFFFC107), shape = CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
+
+            if (isPurchased) {
                 Text(
-                    text = coins.toString(),
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Bold,
+                    text = "Owned",
+                    color = Color.Gray,
                     fontSize = 14.sp,
-                    color = TextColorDarkGlobal
+                    fontFamily = Nunito
                 )
+            } else {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(Color(0xFFFFC107), shape = CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = coins.toString(),
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = Color.Black
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-fun ItemDetailDialog(item: StoreItem, userCoins: Int, coins: Int, onPurchase: () -> Unit, brush: Brush) {
+fun ItemDetailDialog(
+    item: StoreItem,
+    userCoins: Int,
+    isPurchased: Boolean,
+    onPurchase: () -> Unit,
+    brush: Brush
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth(0.9f)
@@ -271,13 +298,11 @@ fun ItemDetailDialog(item: StoreItem, userCoins: Int, coins: Int, onPurchase: ()
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(24.dp)
         ) {
-            val painter = rememberAsyncImagePainter(
-                ImageRequest.Builder(LocalContext.current)
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
                     .data(item.imageRes)
-                    .build()
-            )
-            Image(
-                painter = painter,
+                    .crossfade(true)
+                    .build(),
                 contentDescription = item.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
@@ -287,70 +312,56 @@ fun ItemDetailDialog(item: StoreItem, userCoins: Int, coins: Int, onPurchase: ()
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(text = item.name, fontWeight = FontWeight.Bold, fontSize = 20.sp)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(16.dp)
-                        .background(Color(0xFFFFC107), shape = CircleShape)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = coins.toString(),
-                    fontFamily = Nunito,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = TextColorDarkGlobal
-                )
+
+            if (!isPurchased) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(Color(0xFFFFC107), shape = CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = item.price.toString(),
+                        fontFamily = Nunito,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.Black
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Tombol beli
-            Button(
-                onClick = onPurchase,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = userCoins >= item.price,
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .background(brush = brush, shape = RoundedCornerShape(12.dp))
-                        .padding(horizontal = 32.dp, vertical = 8.dp),
-                    contentAlignment = Alignment.Center
+            if (isPurchased) {
+                Text(
+                    text = "Already owned",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = Color.Gray
+                )
+            } else {
+                Button(
+                    onClick = onPurchase,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = userCoins >= item.price,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
                 ) {
-                    Text("Buy", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    Box(
+                        modifier = Modifier
+                            .background(brush = brush, shape = RoundedCornerShape(12.dp))
+                            .padding(horizontal = 32.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Buy", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White)
+                    }
+                }
+
+                if (userCoins < item.price) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Not enough coins", color = Color.Red, fontSize = 14.sp)
                 }
             }
-
-            // Notifikasi jika koin tidak cukup
-            if (userCoins < item.price) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Not enough coins", color = Color.Red, fontSize = 14.sp)
-            }
         }
-    }
-}
-
-enum class StoreCategory(val label: String) {
-    PET("Pet"),
-    FOOD("Food")
-}
-
-data class StoreItem(val name: String, val price: Int, val imageRes: Int)
-
-fun getItemsForCategory(category: StoreCategory): List<StoreItem> {
-    return when (category) {
-        StoreCategory.PET -> listOf(
-            StoreItem("Cat", 200, R.drawable.cat),
-            StoreItem("Penguin", 250, R.drawable.penguin),
-            StoreItem("Hamster", 228, R.drawable.cat),
-            StoreItem("Rabbit", 320, R.drawable.penguin)
-        )
-        StoreCategory.FOOD -> listOf(
-            StoreItem("Sushi", 30, R.drawable.sushi),
-            StoreItem("Tomato", 50, R.drawable.tomato),
-            StoreItem("Banana", 42, R.drawable.sushi),
-            StoreItem("Milk", 69420, R.drawable.tomato)
-        )
     }
 }

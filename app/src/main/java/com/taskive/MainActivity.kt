@@ -1,11 +1,11 @@
 package com.taskive
 
+import android.app.Application
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -23,22 +23,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.taskive.ui.dashboard.DashboardScreen
 import com.taskive.ui.store.StoreScreen
 import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
-import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
+import com.taskive.ui.viewmodel.TaskViewModel
+import com.taskive.ui.viewmodel.UserViewModel
 import com.taskive.ui.profile.ProfileScreen
 
 // Definisikan warna global
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             TaskiveTheme {
-                TaskiveApp()
+                TaskiveApp(application)
             }
         }
     }
@@ -79,10 +80,23 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TaskiveApp() {
+fun TaskiveApp(application: Application) {
     val navController = rememberNavController()
-    val taskViewModel: TaskViewModel = viewModel()
-    val storeViewModel: StoreViewModel = viewModel()
+    val storeViewModel: StoreViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return StoreViewModel(application) as T
+            }
+        }
+    )
+    val taskViewModel: TaskViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TaskViewModel(application, storeViewModel) as T
+            }
+        }
+    )
+    val userViewModel: UserViewModel = viewModel()
 
     Scaffold(
         bottomBar = { TaskiveBottomBar(navController = navController) }
@@ -105,10 +119,13 @@ fun TaskiveApp() {
             composable(Screen.Store.route) {
                 StoreScreen(
                     navController = navController,
-                    storeViewModel = storeViewModel
+                    storeViewModel = storeViewModel,
+                    userViewModel = userViewModel
                 )
             }
-            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.Profile.route) {
+                ProfileScreen(userViewModel = userViewModel)
+            }
         }
     }
 }

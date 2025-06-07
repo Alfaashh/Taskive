@@ -5,7 +5,9 @@ import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
-import com.taskive.ui.store.StoreItem
+import com.taskive.R
+import com.taskive.model.StoreItem
+import com.taskive.model.Pet
 
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("taskive_store", Context.MODE_PRIVATE)
@@ -13,25 +15,55 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val _coins = mutableStateOf(sharedPreferences.getInt("user_coins", 200))
     val coins: State<Int> = _coins
 
-    private val _purchasedItems = mutableStateOf<List<StoreItem>>(emptyList())
-    val purchasedItems: State<List<StoreItem>> = _purchasedItems
+    private val _purchasedPetIds = mutableStateOf<List<Int>>(loadPurchasedPets())
+    val purchasedPetIds: State<List<Int>> = _purchasedPetIds
 
-    fun addCoins(amount: Int) {
-        _coins.value += amount
-        saveCoins()
+    // Restoring StoreViewModel to use the original GIF files
+    val availablePets = listOf(
+        StoreItem(1, "Cat", 200, R.drawable.cat),
+        StoreItem(2, "Penguin", 250, R.drawable.penguin)
+    )
+
+    val availableFoods = listOf(
+        StoreItem(3, "Sushi", 50, R.drawable.sushi),
+        StoreItem(4, "Tomato", 30, R.drawable.tomato)
+    )
+
+    init {
+        // Initialize purchased pets from shared preferences
+        val savedPets = sharedPreferences.getString("purchased_pets", null)
+        if (!savedPets.isNullOrEmpty()) {
+            _purchasedPetIds.value = savedPets.split(",").map { it.toInt() }
+        }
     }
 
     fun purchaseItem(item: StoreItem): Boolean {
         if (_coins.value >= item.price) {
             _coins.value -= item.price
-            val currentItems = _purchasedItems.value.toMutableList()
-            currentItems.add(item)
-            _purchasedItems.value = currentItems
             saveCoins()
-            savePurchasedItems()
             return true
         }
         return false
+    }
+
+    fun buyPet(itemId: Int, userViewModel: UserViewModel) {
+        val item = availablePets.find { it.id == itemId }
+        if (item != null && _coins.value >= item.price && !_purchasedPetIds.value.contains(item.id)) {
+            _coins.value -= item.price
+            _purchasedPetIds.value = _purchasedPetIds.value + item.id
+
+            userViewModel.addPet(
+                Pet(
+                    id = item.id,
+                    name = item.name,
+                    imageResId = item.imageRes,
+                    status = "Healthy"
+                )
+            )
+
+            saveCoins()
+            savePurchasedPets()
+        }
     }
 
     private fun saveCoins() {
@@ -40,14 +72,23 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
             .apply()
     }
 
-    private fun savePurchasedItems() {
+    private fun savePurchasedPets() {
         sharedPreferences.edit()
-            .putInt("purchased_items_count", _purchasedItems.value.size)
+            .putString("purchased_pets", _purchasedPetIds.value.joinToString(","))
             .apply()
     }
 
-    // Call this when a task is completed to reward the user
-    fun rewardTaskCompletion() {
-        addCoins(10) // Reward 10 coins for completing a task
+    private fun loadPurchasedPets(): List<Int> {
+        val savedPets = sharedPreferences.getString("purchased_pets", "") ?: ""
+        return if (savedPets.isNotEmpty()) {
+            savedPets.split(",").map { it.toInt() }
+        } else {
+            emptyList()
+        }
+    }
+
+    fun addCoins(amount: Int) {
+        _coins.value += amount
+        saveCoins()
     }
 }
