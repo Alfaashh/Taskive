@@ -23,13 +23,15 @@ import com.taskive.navigation.Screen
 import com.taskive.ui.theme.*
 import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
+import com.taskive.ui.viewmodel.UserViewModel
 import com.taskive.ui.tasks.EditTaskDialog
 
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
     taskViewModel: TaskViewModel,
-    storeViewModel: StoreViewModel
+    storeViewModel: StoreViewModel,
+    userViewModel: UserViewModel
 ) {
     LazyColumn(
         modifier = Modifier
@@ -39,7 +41,7 @@ fun DashboardScreen(
     ) {
         item { TopSection(storeViewModel) }
         item { Spacer(modifier = Modifier.height(30.dp)) }
-        item { GreetingSection() }
+        item { GreetingSection(userViewModel.username) }
         item { Spacer(modifier = Modifier.height(20.dp)) }
         item { SummarySection(taskViewModel) }
         item { Spacer(modifier = Modifier.height(30.dp)) }
@@ -96,14 +98,14 @@ private fun TopSection(storeViewModel: StoreViewModel) {
 }
 
 @Composable
-private fun GreetingSection() {
+private fun GreetingSection(username: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Bottom
     ) {
         Text(
-            text = "Hi, Hitam",
+            text = "Hi, $username",
             fontFamily = Nunito,
             fontWeight = FontWeight.Bold,
             fontSize = 30.sp,

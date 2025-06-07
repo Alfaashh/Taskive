@@ -110,7 +110,8 @@ fun TaskiveApp(application: Application) {
                 DashboardScreen(
                     navController = navController,
                     taskViewModel = taskViewModel,
-                    storeViewModel = storeViewModel
+                    storeViewModel = storeViewModel,
+                    userViewModel = userViewModel
                 )
             }
             composable(Screen.Tasks.route) {
