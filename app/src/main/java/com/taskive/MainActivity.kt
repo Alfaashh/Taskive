@@ -96,7 +96,13 @@ fun TaskiveApp(application: Application) {
             }
         }
     )
-    val userViewModel: UserViewModel = viewModel()
+    val userViewModel: UserViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return UserViewModel(application) as T
+            }
+        }
+    )
 
     Scaffold(
         bottomBar = { TaskiveBottomBar(navController = navController) }
