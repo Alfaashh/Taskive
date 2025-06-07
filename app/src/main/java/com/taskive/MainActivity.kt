@@ -39,6 +39,7 @@ import com.taskive.ui.tasks.TasksScreen
 import com.taskive.ui.theme.TaskiveTheme
 import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
+import com.taskive.ui.profile.ProfileScreen
 
 // Definisikan warna global
 val DarkPurple = Color(0xFF3A006A)
@@ -107,7 +108,7 @@ fun TaskiveApp() {
                     storeViewModel = storeViewModel
                 )
             }
-            composable(Screen.Profile.route) { PlaceholderScreen(name = "Profile") }
+            composable(Screen.Profile.route) { ProfileScreen() }
         }
     }
 }
