@@ -154,16 +154,13 @@ class TaskViewModel(
 
         val currentTime = System.currentTimeMillis()
         val diffMillis = deadline - currentTime
-        val diffDays = diffMillis / (24 * 60 * 60 * 1000)
-        val diffHours = (diffMillis % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000)
-        val diffMinutes = (diffMillis % (60 * 60 * 1000)) / (60 * 1000)
 
         return when {
             diffMillis < 0 -> "Due Date Exceeded!"
-            diffDays > 0 -> "$diffDays Days left"
-            diffHours > 0 -> "$diffHours Hours left"
-            diffMinutes > 0 -> "$diffMinutes Minutes left"
-            else -> "Due Now!"
+            diffMillis < 60 * 1000 -> "Less than a minute!"
+            diffMillis < 60 * 60 * 1000 -> "${diffMillis / (60 * 1000)} Minutes left"
+            diffMillis < 24 * 60 * 60 * 1000 -> "${diffMillis / (60 * 60 * 1000)} Hours left"
+            else -> "${diffMillis / (24 * 60 * 60 * 1000)} Days left"
         }
     }
 
@@ -175,22 +172,42 @@ class TaskViewModel(
             if (!task.isCompleted && task.deadline != null) {
                 // Update task status
                 val newStatus = calculateRemainingTime(task.deadline)
+                var updatedTask = task
+
                 if (task.daysLeft != newStatus) {
-                    _tasks[index] = task.copy(daysLeft = newStatus)
+                    updatedTask = task.copy(daysLeft = newStatus)
                     tasksUpdated = true
                 }
 
                 // Check if deadline is exceeded and has a pet assigned
-                if (task.assignedPetId != null && currentTime > task.deadline) {
-                    val daysLate = ((currentTime - task.deadline) / (24 * 60 * 60 * 1000)).toInt()
-                    val daysSinceLastReduction = ((currentTime - task.lastHealthReduction) / (24 * 60 * 60 * 1000)).toInt()
+                if (task.deadline < currentTime) {
+                    // Calculate time since deadline in milliseconds
+                    val timeSinceDeadline = currentTime - task.deadline
+                    val daysLate = (timeSinceDeadline / (24 * 60 * 60 * 1000)).toInt()
 
-                    // Only reduce health if we haven't already done so for this day
-                    if (daysLate > 0 && (task.lastHealthReduction == 0L || daysSinceLastReduction >= 1)) {
-                        userViewModel.reducePetHealth(task.assignedPetId, 10) // Reduce 10 HP per day
-                        _tasks[index] = task.copy(lastHealthReduction = currentTime)
+                    // Calculate how many days worth of damage we need to apply
+                    val daysToCharge = if (updatedTask.lastHealthReduction == 0L) {
+                        // First time exceeding deadline - charge for at least one day
+                        maxOf(1, daysLate)
+                    } else {
+                        val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
+                        val daysSinceLastReduction = (timeSinceLastReduction / (24 * 60 * 60 * 1000)).toInt()
+                        if (daysSinceLastReduction >= 1) daysSinceLastReduction else 0
+                    }
+
+                    if (daysToCharge > 0) {
+                        // Only reduce health if we have a pet assigned
+                        updatedTask.assignedPetId?.let { petId ->
+                            // Reduce HP by 10 for each day
+                            userViewModel.reducePetHealth(petId, daysToCharge * 10)
+                        }
+                        updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
                         tasksUpdated = true
                     }
+                }
+
+                if (tasksUpdated) {
+                    _tasks[index] = updatedTask
                 }
             }
         }
@@ -204,7 +221,7 @@ class TaskViewModel(
         viewModelScope.launch {
             while (true) {
                 updateTaskStatuses()
-                delay(30 * 1000) // Update every 30 seconds
+                delay(10 * 1000) // Check every 10 seconds for more responsive updates
             }
         }
     }
