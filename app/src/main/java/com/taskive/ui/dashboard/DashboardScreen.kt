@@ -39,7 +39,7 @@ fun DashboardScreen(
             .background(LightPurpleBackground)
             .padding(horizontal = 20.dp)
     ) {
-        item { TopSection() }
+        item { TopSection(userViewModel) }
         item { Spacer(modifier = Modifier.height(30.dp)) }
         item { GreetingSection(userViewModel.username) }
         item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -51,7 +51,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun TopSection() {
+private fun TopSection(userViewModel: UserViewModel) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,6 +72,26 @@ private fun TopSection() {
             text = taskiveText,
             style = MaterialTheme.typography.displayLarge
         )
+
+        // Add coin display
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(end = 16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(Color(0xFFFFC107), shape = CircleShape)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = userViewModel.coins.toString(),
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = Color.Black
+            )
+        }
     }
 }
 

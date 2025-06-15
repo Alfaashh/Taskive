@@ -49,7 +49,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadCoins(): Int {
-        return sharedPreferences.getInt("coins", 0)
+        return sharedPreferences.getInt("coins", 200)  // Changed default value to 200
     }
 
     private fun loadPets(): List<Pet> {
@@ -115,21 +115,20 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addXPAndCoins(xpAmount: Int = 20, coinsAmount: Int = 15) {
-        val newXP = currentXP + xpAmount
-        val requiredXP = getRequiredXPForLevel(currentLevel)
-
-        if (newXP >= requiredXP) {
+        // Update XP and potentially level up
+        currentXP += xpAmount
+        while (currentXP >= getRequiredXPForLevel(currentLevel)) {
+            currentXP -= getRequiredXPForLevel(currentLevel)
             currentLevel++
-            currentXP = newXP - requiredXP
-            sharedPreferences.edit().putInt("level", currentLevel).apply()
-        } else {
-            currentXP = newXP
         }
 
+        // Update coins
         coins += coinsAmount
 
+        // Save all changes
         sharedPreferences.edit()
             .putInt("xp", currentXP)
+            .putInt("level", currentLevel)
             .putInt("coins", coins)
             .apply()
     }

@@ -211,8 +211,7 @@ class TaskViewModel(
 
                 // Check if task was completed before deadline
                 if (existingTask.deadline != null && System.currentTimeMillis() < existingTask.deadline) {
-                    // Reward user with 15 coins and 20 XP for completing before deadline
-                    userViewModel.addXPAndCoins(20, 15)
+                    userViewModel.addXPAndCoins(20, 15) // Use userViewModel to update both XP and coins
                 }
 
                 saveTasks()
@@ -349,8 +348,7 @@ class TaskViewModel(
 
         // Check if task has deadline and was completed before deadline
         if (task.deadline != null && currentTime <= task.deadline) {
-            // Reward user with 15 coins and 20 XP for completing before deadline
-            userViewModel.addXPAndCoins(20, 15)
+            userViewModel.addXPAndCoins(20, 15) // Use userViewModel to update both XP and coins
         }
 
         val updatedTask = task.copy(isCompleted = true)
