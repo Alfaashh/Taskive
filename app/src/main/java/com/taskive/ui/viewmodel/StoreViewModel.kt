@@ -20,14 +20,20 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     // Restoring StoreViewModel to use the original GIF files
     val availablePets = listOf(
-        StoreItem(1, "Cat", 200, R.drawable.cat),
-        StoreItem(2, "Penguin", 250, R.drawable.penguin)
+        StoreItem(1, "Cat", 250, R.drawable.cat, healthPoints = 250, sickImageRes = R.drawable.sick_cat),
+        StoreItem(2, "Penguin", 200, R.drawable.penguin, healthPoints = 200, sickImageRes = R.drawable.sick_penguin)
     )
 
     val availableFoods = listOf(
-        StoreItem(3, "Sushi", 50, R.drawable.sushi),
-        StoreItem(4, "Tomato", 30, R.drawable.tomato)
+        StoreItem(3, "Sushi", 50, R.drawable.sushi, healingPoints = 20),
+        StoreItem(4, "Tomato", 30, R.drawable.tomato, healingPoints = 10)
     )
+
+    private val _showHealDialog = mutableStateOf(false)
+    val showHealDialog: State<Boolean> = _showHealDialog
+
+    private val _selectedFood = mutableStateOf<StoreItem?>(null)
+    val selectedFood: State<StoreItem?> = _selectedFood
 
     init {
         // Initialize purchased pets from shared preferences
@@ -57,12 +63,33 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                     id = item.id,
                     name = item.name,
                     imageResId = item.imageRes,
-                    status = "Healthy"
+                    healthPoints = item.healthPoints,
+                    maxHealthPoints = item.healthPoints,
+                    sickImageResId = item.sickImageRes
                 )
             )
 
             saveCoins()
             savePurchasedPets()
+        }
+    }
+
+    fun buyFood(itemId: Int, userViewModel: UserViewModel) {
+        val item = availableFoods.find { it.id == itemId }
+        if (item != null && _coins.value >= item.price) {
+            _selectedFood.value = item
+            _showHealDialog.value = true
+        }
+    }
+
+    fun healPet(petId: Int, userViewModel: UserViewModel) {
+        val food = _selectedFood.value
+        if (food != null) {
+            _coins.value -= food.price
+            saveCoins()
+            userViewModel.healPet(petId, food.healingPoints)
+            _showHealDialog.value = false
+            _selectedFood.value = null
         }
     }
 
@@ -90,5 +117,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     fun addCoins(amount: Int) {
         _coins.value += amount
         saveCoins()
+    }
+
+    fun dismissHealDialog() {
+        _showHealDialog.value = false
+        _selectedFood.value = null
     }
 }

@@ -55,13 +55,16 @@ fun StatItem(count: String, label: String) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PetCard(pet: Pet) {
+    var showDetailsDialog by remember { mutableStateOf(false) }
+
     Card(
         modifier = Modifier
             .width(160.dp)
             .height(180.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        onClick = { showDetailsDialog = true }
     ) {
         Column(
             modifier = Modifier
@@ -72,7 +75,7 @@ fun PetCard(pet: Pet) {
         ) {
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
-                    .data(pet.imageResId)
+                    .data(pet.getCurrentImage())
                     .crossfade(true)
                     .build(),
                 contentDescription = pet.name,
@@ -95,12 +98,17 @@ fun PetCard(pet: Pet) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            val statusColor = if (pet.status == "Healthy") Color(0xFF4CAF50) else Color(0xFFF44336)
+            val statusColor = when (pet.status) {
+                "Healthy" -> Color(0xFF4CAF50)
+                "Sick" -> Color(0xFFFF9800)
+                else -> Color(0xFFF44336)
+            }
+
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
                     .background(statusColor.copy(alpha = 0.1f))
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
                 Text(
                     pet.status,
@@ -110,6 +118,41 @@ fun PetCard(pet: Pet) {
                 )
             }
         }
+    }
+
+    if (showDetailsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDetailsDialog = false },
+            title = {
+                Text(
+                    "${pet.name}'s Details",
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        "Health Points: ${pet.healthPoints}/${pet.maxHealthPoints}",
+                        fontFamily = Nunito
+                    )
+                    Text(
+                        "Status: ${pet.status}",
+                        fontFamily = Nunito,
+                        color = when (pet.status) {
+                            "Healthy" -> Color(0xFF4CAF50)
+                            "Sick" -> Color(0xFFFF9800)
+                            else -> Color(0xFFF44336)
+                        }
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDetailsDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 

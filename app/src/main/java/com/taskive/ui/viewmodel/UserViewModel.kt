@@ -50,8 +50,41 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         savePets()
     }
 
+    fun reducePetHealth(petId: Int, amount: Int) {
+        _pets.value = _pets.value.map { pet ->
+            if (pet.id == petId) {
+                val newHealth = (pet.healthPoints - amount).coerceAtLeast(0)
+                pet.copy(
+                    healthPoints = newHealth,
+                    status = if (newHealth < pet.maxHealthPoints) "Sick" else "Healthy"
+                )
+            } else pet
+        }
+        savePets()
+    }
+
+    fun healPet(petId: Int, healingPoints: Int) {
+        _pets.value = _pets.value.map { pet ->
+            if (pet.id == petId) {
+                val newHealth = (pet.healthPoints + healingPoints).coerceAtMost(pet.maxHealthPoints)
+                pet.copy(
+                    healthPoints = newHealth,
+                    status = if (newHealth < pet.maxHealthPoints) "Sick" else "Healthy"
+                )
+            } else pet
+        }
+        savePets()
+    }
+
+    fun getPetHealth(petId: Int): Pair<Int, Int>? {
+        return pets.find { it.id == petId }?.let {
+            Pair(it.healthPoints, it.maxHealthPoints)
+        }
+    }
+
     private fun savePets() {
-        val petsJson = gson.toJson(_pets.value)
-        sharedPreferences.edit().putString("pets", petsJson).apply()
+        sharedPreferences.edit()
+            .putString("pets", gson.toJson(_pets.value))
+            .apply()
     }
 }

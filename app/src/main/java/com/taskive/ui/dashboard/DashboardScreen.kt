@@ -26,11 +26,11 @@ import com.taskive.ui.viewmodel.StoreViewModel
 import com.taskive.ui.viewmodel.UserViewModel
 import com.taskive.ui.tasks.EditTaskDialog
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     navController: NavHostController,
     taskViewModel: TaskViewModel,
-    storeViewModel: StoreViewModel,
     userViewModel: UserViewModel
 ) {
     LazyColumn(
@@ -39,7 +39,7 @@ fun DashboardScreen(
             .background(LightPurpleBackground)
             .padding(horizontal = 20.dp)
     ) {
-        item { TopSection(storeViewModel) }
+        item { TopSection() }
         item { Spacer(modifier = Modifier.height(30.dp)) }
         item { GreetingSection(userViewModel.username) }
         item { Spacer(modifier = Modifier.height(20.dp)) }
@@ -51,7 +51,7 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun TopSection(storeViewModel: StoreViewModel) {
+private fun TopSection() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -72,28 +72,6 @@ private fun TopSection(storeViewModel: StoreViewModel) {
             text = taskiveText,
             style = MaterialTheme.typography.displayLarge
         )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .background(Color.White, RoundedCornerShape(16.dp))
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .background(Color(0xFFFFC107), CircleShape)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "${storeViewModel.coins.value}",
-                fontFamily = Nunito,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = TextColorDark
-            )
-        }
     }
 }
 

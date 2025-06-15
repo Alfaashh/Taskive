@@ -159,6 +159,16 @@ fun StoreScreen(
             }
         }
     }
+
+    if (storeViewModel.showHealDialog.value) {
+        storeViewModel.selectedFood.value?.let { food ->
+            HealDialog(
+                userViewModel = userViewModel,
+                storeViewModel = storeViewModel,
+                selectedFood = food
+            )
+        }
+    }
 }
 
 @Composable
@@ -364,4 +374,89 @@ fun ItemDetailDialog(
             }
         }
     }
+}
+
+@Composable
+fun HealDialog(
+    userViewModel: UserViewModel,
+    storeViewModel: StoreViewModel,
+    selectedFood: StoreItem
+) {
+    AlertDialog(
+        onDismissRequest = { storeViewModel.dismissHealDialog() },
+        title = {
+            Text(
+                "Choose Pet to Heal",
+                fontFamily = Nunito,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "Using ${selectedFood.name} (+${selectedFood.healingPoints} HP)",
+                    fontFamily = Nunito,
+                    fontSize = 14.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    userViewModel.pets.forEach { pet ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { storeViewModel.healPet(pet.id, userViewModel) },
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (pet.healthPoints < pet.maxHealthPoints)
+                                    MaterialTheme.colorScheme.errorContainer
+                                else MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(LocalContext.current)
+                                            .data(pet.getCurrentImage())
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = pet.name,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                    Text(
+                                        pet.name,
+                                        fontFamily = Nunito,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                                Text(
+                                    "${pet.healthPoints}/${pet.maxHealthPoints} HP",
+                                    fontFamily = Nunito,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { storeViewModel.dismissHealDialog() }) {
+                Text("Cancel")
+            }
+        }
+    )
 }

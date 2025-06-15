@@ -82,20 +82,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun TaskiveApp(application: Application) {
     val navController = rememberNavController()
-    val storeViewModel: StoreViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return StoreViewModel(application) as T
-            }
-        }
-    )
-    val taskViewModel: TaskViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return TaskViewModel(application, storeViewModel) as T
-            }
-        }
-    )
+
     val userViewModel: UserViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -104,8 +91,65 @@ fun TaskiveApp(application: Application) {
         }
     )
 
+    val storeViewModel: StoreViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return StoreViewModel(application) as T
+            }
+        }
+    )
+
+    val taskViewModel: TaskViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return TaskViewModel(application, storeViewModel, userViewModel) as T
+            }
+        }
+    )
+
     Scaffold(
-        bottomBar = { TaskiveBottomBar(navController = navController) }
+        bottomBar = {
+            NavigationBar(
+                modifier = Modifier.clip(
+                    RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                ),
+                containerColor = MaterialTheme.colorScheme.surface
+            ) {
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
+                val currentDestination = navBackStackEntry?.destination
+
+                bottomNavItems.forEach { screen ->
+                    NavigationBarItem(
+                        icon = {
+                            Icon(
+                                screen.icon,
+                                contentDescription = screen.label,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        label = {
+                            Text(
+                                screen.label,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            )
+                        },
+                        selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                        onClick = {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    )
+                }
+            }
+        }
     ) { innerPadding ->
         NavHost(
             navController = navController,
@@ -116,12 +160,14 @@ fun TaskiveApp(application: Application) {
                 DashboardScreen(
                     navController = navController,
                     taskViewModel = taskViewModel,
-                    storeViewModel = storeViewModel,
                     userViewModel = userViewModel
                 )
             }
             composable(Screen.Tasks.route) {
-                TasksScreen(taskViewModel = taskViewModel)
+                TasksScreen(
+                    taskViewModel = taskViewModel,
+                    userViewModel = userViewModel
+                )
             }
             composable(Screen.Store.route) {
                 StoreScreen(

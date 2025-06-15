@@ -23,20 +23,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import com.taskive.DarkPurple
 import com.taskive.ui.theme.MediumPurpleLight
 import com.taskive.ui.theme.MediumPurpleDark
 import com.taskive.ui.theme.Nunito
 import com.taskive.ui.viewmodel.Task
 import com.taskive.ui.viewmodel.TaskViewModel
+import com.taskive.ui.viewmodel.UserViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
-    taskViewModel: TaskViewModel = viewModel()
+    taskViewModel: TaskViewModel,
+    userViewModel: UserViewModel
 ) {
     val backgroundColor = Color(0xFFF5F5F5)
     val gradientBrush = Brush.horizontalGradient(
@@ -135,12 +142,19 @@ fun TasksScreen(
                                 items(taskViewModel.tasks) { task ->
                                     TaskCard(
                                         task = task,
-                                        gradientBrush = Brush.verticalGradient(
-                                            colors = listOf(MediumPurpleLight, MediumPurpleDark)
-                                        ),
-                                        onClick = {
+                                        userViewModel = userViewModel,
+                                        onTaskClick = {
                                             taskViewModel.selectTask(task)
                                             taskViewModel.openEditTaskDialog()
+                                        },
+                                        onTaskComplete = {
+                                            taskViewModel.updateTask(
+                                                task.id,
+                                                task.title,
+                                                task.datetime,
+                                                task.description,
+                                                true
+                                            )
                                         }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
@@ -170,10 +184,9 @@ fun TasksScreen(
                                 items(taskViewModel.completedTasks) { task ->
                                     TaskCard(
                                         task = task,
-                                        gradientBrush = Brush.verticalGradient(
-                                            colors = listOf(MediumPurpleLight, MediumPurpleDark)
-                                        ),
-                                        onClick = {}  // Completed tasks are not editable
+                                        userViewModel = userViewModel,
+                                        onTaskClick = { /* Completed tasks are not editable */ },
+                                        onTaskComplete = { /* Completed tasks cannot be completed again */ }
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                 }
@@ -188,9 +201,14 @@ fun TasksScreen(
                     onDismissRequest = {
                         taskViewModel.dismissAddTaskDialog()
                     },
-                    onTaskCreate = { title, date, time, description ->
+                    onTaskCreate = { title, date, time, description, deadline ->
                         val datetime = "$time, $date"
-                        taskViewModel.addTask(title, datetime, description)
+                        taskViewModel.addTask(
+                            title = title,
+                            datetime = datetime,
+                            description = description,
+                            deadline = deadline
+                        )
                     }
                 )
             }
@@ -318,68 +336,115 @@ private fun calculateTaskStatus(date: String?, time: String?): String {
 @Composable
 fun TaskCard(
     task: Task,
-    gradientBrush: Brush,
-    onClick: () -> Unit = {}
+    userViewModel: UserViewModel,
+    onTaskClick: () -> Unit,
+    onTaskComplete: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .clickable(onClick = onClick),
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onTaskClick() },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .background(gradientBrush)
-                .padding(16.dp)
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(MediumPurpleLight, MediumPurpleDark)
+                    )
+                )
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = task.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontFamily = Nunito
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Only show datetime if it's not "Select Date" or "Select Time"
-                val dateTime = task.datetime.split(", ")
-                val time = dateTime.getOrNull(0)?.takeIf { it != "Select Time" }
-                val date = dateTime.getOrNull(1)?.takeIf { it != "Select Date" }
-
-                if (time != null || date != null) {
-                    Text(
-                        text = buildString {
-                            time?.let { append(it) }
-                            if (time != null && date != null) append(", ")
-                            date?.let { append(it) }
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f),
-                        fontFamily = Nunito
-                    )
-                }
-
-                if (task.description.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = task.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.9f),
-                        fontFamily = Nunito
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = calculateTaskStatus(date, time),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color.White,
+                    task.title,
                     fontFamily = Nunito,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    task.description,
+                    fontFamily = Nunito,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.8f),
+                    maxLines = 2
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarToday,
+                            contentDescription = "Date",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            task.datetime,
+                            fontFamily = Nunito,
+                            fontSize = 12.sp,
+                            color = Color.White
+                        )
+                    }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = "Days Left",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            task.daysLeft,
+                            fontFamily = Nunito,
+                            fontSize = 12.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+
+            // Show pet if task has deadline and assigned pet
+            if (task.deadline != null && task.assignedPetId != null) {
+                val assignedPet = userViewModel.pets.find { it.id == task.assignedPetId }
+                assignedPet?.let { pet ->
+                    Box(
+                        modifier = Modifier
+                            .size(50.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .padding(4.dp)
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(pet.getCurrentImage())
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = pet.name,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
             }
         }
     }
@@ -389,7 +454,7 @@ fun TaskCard(
 @Composable
 fun AddTaskDialog(
     onDismissRequest: () -> Unit,
-    onTaskCreate: (String, String, String, String) -> Unit
+    onTaskCreate: (String, String, String, String, Long?) -> Unit
 ) {
     var taskName by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
@@ -487,11 +552,18 @@ fun AddTaskDialog(
                 Button(
                     onClick = {
                         if (taskName.isNotEmpty()) {
+                            val deadline = if (selectedDateText != "Select Date" && selectedTimeText != "Select Time") {
+                                val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                                val dateTimeString = "${selectedDateText} ${selectedTimeText}"
+                                sdf.parse(dateTimeString)?.time
+                            } else null
+
                             onTaskCreate(
                                 taskName,
                                 selectedDateText,
                                 selectedTimeText,
-                                description
+                                description,
+                                deadline
                             )
                             onDismissRequest()
                         }
