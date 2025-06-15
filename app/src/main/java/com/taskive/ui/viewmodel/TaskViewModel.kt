@@ -224,24 +224,10 @@ class TaskViewModel(
                 _completedTasks.add(newTask)
                 saveTasks()
                 saveCompletedTasks()
-                // Add coins and XP reward
-                userViewModel.addCoins(50)
+                // Add coins and XP reward (15 coins)
+                userViewModel.addCoins(15)
                 userViewModel.addXPAndCoins(20, 0) // Only add XP, no additional coins
-            } else if (oldTask.isCompleted && !isCompleted) {
-                // Task was uncompleted
-                _completedCount.value--
-                userViewModel.updateCompletedTasks(_completedCount.value)
-                sharedPreferences.edit {
-                    putInt("completed_count", _completedCount.value)
-                }
-                // Remove from completed tasks and add back to tasks
-                _completedTasks.remove(oldTask)
-                _tasks.add(newTask)
-                saveTasks()
-                saveCompletedTasks()
-                // Remove coins and XP reward
-                userViewModel.addCoins(-50)
-                userViewModel.addXPAndCoins(-20, 0) // Remove XP, no coin change
+                dismissEditTaskDialog() // Auto-dismiss dialog after completion
             } else {
                 // Just updating task details without changing completion status
                 if (isCompleted) {
@@ -254,7 +240,10 @@ class TaskViewModel(
                     _tasks[taskIndex] = newTask
                     saveTasks()
                 }
+                dismissEditTaskDialog() // Also dismiss dialog after regular updates
             }
+        } else {
+            dismissEditTaskDialog() // Dismiss dialog if task not found
         }
     }
 
