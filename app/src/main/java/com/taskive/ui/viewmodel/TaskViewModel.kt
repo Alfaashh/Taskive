@@ -30,7 +30,6 @@ data class Task(
 
 class TaskViewModel(
     application: Application,
-    private val storeViewModel: StoreViewModel,
     private val userViewModel: UserViewModel
 ) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("taskive_tasks", Context.MODE_PRIVATE)
@@ -116,7 +115,7 @@ class TaskViewModel(
         description: String = "",
         deadline: Long? = null
     ) {
-        var taskDeadline: Long? = null
+        var taskDeadline = deadline
         val dateTimeArray = datetime.split(", ")
         val calendar = Calendar.getInstance()
 
@@ -200,83 +199,63 @@ class TaskViewModel(
         description: String,
         isCompleted: Boolean
     ) {
-        val index = _tasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            val existingTask = _tasks[index]
-            if (isCompleted) {
-                val completedTask = existingTask.copy(isCompleted = true)
-                _tasks.removeAt(index)
-                _completedTasks.add(0, completedTask)
-                _completedCount.value += 1
+        val taskIndex = _tasks.indexOfFirst { it.id == taskId }
+        if (taskIndex != -1) {
+            val oldTask = _tasks[taskIndex]
+            val daysLeft = calculateRemainingTime(null) // or pass appropriate deadline if needed
+            val newTask = Task(
+                id = taskId,
+                title = title,
+                datetime = datetime,
+                daysLeft = daysLeft,
+                description = description,
+                isCompleted = isCompleted
+            )
 
-                // Check if task was completed before deadline
-                if (existingTask.deadline != null && System.currentTimeMillis() < existingTask.deadline) {
-                    userViewModel.addXPAndCoins(20, 15) // Use userViewModel to update both XP and coins
+            if (!oldTask.isCompleted && isCompleted) {
+                // Task was just completed
+                _completedCount.value++
+                userViewModel.updateCompletedTasks(_completedCount.value)
+                sharedPreferences.edit {
+                    putInt("completed_count", _completedCount.value)
                 }
-
+                // Remove from tasks and add to completed tasks
+                _tasks.removeAt(taskIndex)
+                _completedTasks.add(newTask)
                 saveTasks()
                 saveCompletedTasks()
-            } else {
-                var taskDeadline: Long? = null
-                val dateTimeArray = datetime.split(", ")
-                val calendar = Calendar.getInstance()
-
-                if (dateTimeArray.size == 2) {
-                    val time = dateTimeArray[0]
-                    val date = dateTimeArray[1]
-
-                    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-
-                    try {
-                        // Case 1: Only date selected (no time)
-                        if (date != "Select Date" && (time == "Select Time" || time.isEmpty())) {
-                            calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
-                            calendar.set(Calendar.HOUR_OF_DAY, 23)
-                            calendar.set(Calendar.MINUTE, 59)
-                            taskDeadline = calendar.timeInMillis
-                        }
-                        // Case 2: Only time selected (no date)
-                        else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
-                            val timeParts = time.split(":")
-                            calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
-                            calendar.set(Calendar.MINUTE, timeParts[1].toInt())
-                            taskDeadline = calendar.timeInMillis
-                        }
-                        // Case 3: Both date and time selected
-                        else if (date != "Select Date" && time != "Select Time" && time.isNotEmpty()) {
-                            taskDeadline = sdf.parse("$date $time")?.time
-                        }
-                    } catch (e: Exception) {
-                        e.printStackTrace()
-                        taskDeadline = null
-                    }
+                // Add coins and XP reward
+                userViewModel.addCoins(50)
+                userViewModel.addXPAndCoins(20, 0) // Only add XP, no additional coins
+            } else if (oldTask.isCompleted && !isCompleted) {
+                // Task was uncompleted
+                _completedCount.value--
+                userViewModel.updateCompletedTasks(_completedCount.value)
+                sharedPreferences.edit {
+                    putInt("completed_count", _completedCount.value)
                 }
-
-                val updatedTask = existingTask.copy(
-                    title = title,
-                    datetime = when {
-                        taskDeadline == null -> ""
-                        dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
-                            "23:59, ${dateTimeArray[1]}"
-                        dateTimeArray[1] == "Select Date" ->
-                            "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(calendar.time)}"
-                        else -> datetime
-                    },
-                    daysLeft = calculateRemainingTime(taskDeadline),
-                    description = description,
-                    deadline = taskDeadline,
-                    // Maintain or assign pet if deadline exists
-                    assignedPetId = if (taskDeadline != null) {
-                        existingTask.assignedPetId ?: if (userViewModel.pets.isNotEmpty()) {
-                            userViewModel.pets.random().id
-                        } else null
-                    } else null
-                )
-                _tasks[index] = updatedTask
+                // Remove from completed tasks and add back to tasks
+                _completedTasks.remove(oldTask)
+                _tasks.add(newTask)
                 saveTasks()
+                saveCompletedTasks()
+                // Remove coins and XP reward
+                userViewModel.addCoins(-50)
+                userViewModel.addXPAndCoins(-20, 0) // Remove XP, no coin change
+            } else {
+                // Just updating task details without changing completion status
+                if (isCompleted) {
+                    val completedTaskIndex = _completedTasks.indexOfFirst { it.id == taskId }
+                    if (completedTaskIndex != -1) {
+                        _completedTasks[completedTaskIndex] = newTask
+                        saveCompletedTasks()
+                    }
+                } else {
+                    _tasks[taskIndex] = newTask
+                    saveTasks()
+                }
             }
         }
-        dismissEditTaskDialog()
     }
 
     private fun updateTaskStatuses() {

@@ -72,7 +72,7 @@ fun StoreScreen(
                 )
             },
             actions = {
-                CoinBalance(storeViewModel.coins.value)
+                CoinBalance(userViewModel.coins)
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color(0xFFF5F5F5),
@@ -145,7 +145,7 @@ fun StoreScreen(
             ) {
                 ItemDetailDialog(
                     item = item,
-                    userCoins = storeViewModel.coins.value,
+                    userCoins = userViewModel.coins,
                     isPurchased = selectedCategory == StoreCategory.PET &&
                                 storeViewModel.purchasedPetIds.value.contains(item.id),
                     onPurchase = {

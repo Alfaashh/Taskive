@@ -102,7 +102,7 @@ fun TaskiveApp(application: Application) {
     val taskViewModel: TaskViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return TaskViewModel(application, storeViewModel, userViewModel) as T
+                return TaskViewModel(application, userViewModel) as T
             }
         }
     )

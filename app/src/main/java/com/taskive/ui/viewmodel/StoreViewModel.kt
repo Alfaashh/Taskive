@@ -12,9 +12,6 @@ import com.taskive.model.Pet
 class StoreViewModel(application: Application) : AndroidViewModel(application) {
     private val sharedPreferences = application.getSharedPreferences("taskive_store", Context.MODE_PRIVATE)
 
-    private val _coins = mutableStateOf(sharedPreferences.getInt("user_coins", 200))
-    val coins: State<Int> = _coins
-
     private val _purchasedPetIds = mutableStateOf<List<Int>>(loadPurchasedPets())
     val purchasedPetIds: State<List<Int>> = _purchasedPetIds
 
@@ -43,19 +40,10 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun purchaseItem(item: StoreItem): Boolean {
-        if (_coins.value >= item.price) {
-            _coins.value -= item.price
-            saveCoins()
-            return true
-        }
-        return false
-    }
-
     fun buyPet(itemId: Int, userViewModel: UserViewModel) {
         val item = availablePets.find { it.id == itemId }
-        if (item != null && _coins.value >= item.price && !_purchasedPetIds.value.contains(item.id)) {
-            _coins.value -= item.price
+        if (item != null && userViewModel.coins >= item.price && !_purchasedPetIds.value.contains(item.id)) {
+            userViewModel.spendCoins(item.price)
             _purchasedPetIds.value = _purchasedPetIds.value + item.id
 
             userViewModel.addPet(
@@ -69,14 +57,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
                 )
             )
 
-            saveCoins()
             savePurchasedPets()
         }
     }
 
     fun buyFood(itemId: Int, userViewModel: UserViewModel) {
         val item = availableFoods.find { it.id == itemId }
-        if (item != null && _coins.value >= item.price) {
+        if (item != null && userViewModel.coins >= item.price) {
             _selectedFood.value = item
             _showHealDialog.value = true
         }
@@ -84,9 +71,8 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun healPet(petId: Int, userViewModel: UserViewModel) {
         val food = _selectedFood.value
-        if (food != null) {
-            _coins.value -= food.price
-            saveCoins()
+        if (food != null && userViewModel.coins >= food.price) {
+            userViewModel.spendCoins(food.price)
             userViewModel.healPet(petId, food.healingPoints)
             _showHealDialog.value = false
             _selectedFood.value = null
@@ -94,41 +80,30 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun purchaseAndUseFoodItem(food: StoreItem, petId: Int, userViewModel: UserViewModel) {
-        if (_coins.value >= food.price) {
-            _coins.value -= food.price
-            saveCoins()
+        if (userViewModel.coins >= food.price) {
+            userViewModel.spendCoins(food.price)
             userViewModel.healPet(petId, food.healingPoints ?: 0)
-        }
-    }
-
-    fun addCoins(amount: Int) {
-        _coins.value += amount
-        saveCoins()
-    }
-
-    private fun saveCoins() {
-        sharedPreferences.edit()
-            .putInt("user_coins", _coins.value)
-            .apply()
-    }
-
-    private fun savePurchasedPets() {
-        sharedPreferences.edit()
-            .putString("purchased_pets", _purchasedPetIds.value.joinToString(","))
-            .apply()
-    }
-
-    private fun loadPurchasedPets(): List<Int> {
-        val savedPets = sharedPreferences.getString("purchased_pets", "") ?: ""
-        return if (savedPets.isNotEmpty()) {
-            savedPets.split(",").map { it.toInt() }
-        } else {
-            emptyList()
         }
     }
 
     fun dismissHealDialog() {
         _showHealDialog.value = false
         _selectedFood.value = null
+    }
+
+    private fun loadPurchasedPets(): List<Int> {
+        val savedPets = sharedPreferences.getString("purchased_pets", null)
+        return if (!savedPets.isNullOrEmpty()) {
+            savedPets.split(",").map { it.toInt() }
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun savePurchasedPets() {
+        sharedPreferences.edit().putString(
+            "purchased_pets",
+            _purchasedPetIds.value.joinToString(",")
+        ).apply()
     }
 }

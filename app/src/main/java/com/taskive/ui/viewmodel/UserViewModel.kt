@@ -26,8 +26,8 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     var coins by mutableStateOf(loadCoins())
         private set
 
-    var completedTasks by mutableStateOf(loadCompletedTasks())
-        private set
+    private var _completedTasks = mutableStateOf(sharedPreferences.getInt("completed_tasks", 0))
+    val completedTasks: Int get() = _completedTasks.value
 
     private var _pets = mutableStateOf<List<Pet>>(loadPets())
     val pets: List<Pet> get() = _pets.value
@@ -56,10 +56,6 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         val petsJson = sharedPreferences.getString("pets", "[]")
         val type = object : TypeToken<List<Pet>>() {}.type
         return gson.fromJson(petsJson, type) ?: emptyList()
-    }
-
-    private fun loadCompletedTasks(): Int {
-        return sharedPreferences.getInt("completed_tasks", 0)
     }
 
     fun updateUsername(newUsername: String) {
@@ -134,8 +130,13 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun incrementCompletedTasks() {
-        completedTasks++
-        sharedPreferences.edit().putInt("completed_tasks", completedTasks).apply()
+        _completedTasks.value++
+        sharedPreferences.edit().putInt("completed_tasks", _completedTasks.value).apply()
+    }
+
+    fun updateCompletedTasks(count: Int) {
+        _completedTasks.value = count
+        sharedPreferences.edit().putInt("completed_tasks", count).apply()
     }
 
     fun addCoins(amount: Int) {
