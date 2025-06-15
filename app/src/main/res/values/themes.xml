@@ -2,4 +2,18 @@
 <resources>
 
     <style name="Theme.Taskive" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- Set the splash screen background color -->
+        <item name="windowSplashScreenBackground">@color/dark_purple</item>
+
+        <!-- Use the custom drawable with rounded rectangle as the splash screen icon -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>
+
+        <!-- Set the splash screen icon animation duration -->
+        <item name="windowSplashScreenAnimationDuration">500</item>
+
+        <!-- Set the theme used to display the app after the splash screen -->
+        <item name="postSplashScreenTheme">@style/Theme.Taskive</item>
+    </style>
 </resources>
