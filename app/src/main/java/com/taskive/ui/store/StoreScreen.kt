@@ -50,6 +50,8 @@ fun StoreScreen(
 ) {
     var selectedCategory by remember { mutableStateOf(StoreCategory.PET) }
     var selectedItem: StoreItem? by remember { mutableStateOf(null) }
+    var showPetSelection by remember { mutableStateOf(false) }
+    var selectedFood: StoreItem? by remember { mutableStateOf(null) }
 
     val gradientBrush = Brush.verticalGradient(
         colors = listOf(MediumPurpleLight, MediumPurpleDark)
@@ -149,13 +151,117 @@ fun StoreScreen(
                     onPurchase = {
                         if (selectedCategory == StoreCategory.PET) {
                             storeViewModel.buyPet(item.id, userViewModel)
+                            selectedItem = null
                         } else {
-                            storeViewModel.purchaseItem(item)
+                            // For food items, show pet selection dialog
+                            selectedFood = item
+                            showPetSelection = true
+                            selectedItem = null
                         }
-                        selectedItem = null
                     },
                     brush = gradientBrush
                 )
+            }
+        }
+    }
+
+    if (showPetSelection && selectedFood != null) {
+        Dialog(
+            onDismissRequest = {
+                showPetSelection = false
+                selectedFood = null
+            }
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Text(
+                        "Select Pet to Feed",
+                        fontFamily = Nunito,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    if (userViewModel.pets.isEmpty()) {
+                        Text(
+                            "You don't have any pets yet!",
+                            fontFamily = Nunito,
+                            fontSize = 16.sp,
+                            color = Color.Gray
+                        )
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            userViewModel.pets.forEach { pet ->
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            storeViewModel.purchaseAndUseFoodItem(selectedFood!!, pet.id, userViewModel)
+                                            showPetSelection = false
+                                            selectedFood = null
+                                        },
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(LocalContext.current)
+                                                .data(pet.getCurrentImage())
+                                                .crossfade(true)
+                                                .build(),
+                                            contentDescription = pet.name,
+                                            modifier = Modifier
+                                                .size(40.dp)
+                                                .clip(CircleShape),
+                                            contentScale = ContentScale.Fit
+                                        )
+
+                                        Spacer(modifier = Modifier.width(8.dp))
+
+                                        Column {
+                                            Text(
+                                                pet.name,
+                                                fontFamily = Nunito,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                "HP: ${pet.healthPoints}/${pet.maxHealthPoints}",
+                                                fontFamily = Nunito,
+                                                fontSize = 12.sp,
+                                                color = Color.Gray
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            showPetSelection = false
+                            selectedFood = null
+                        },
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .padding(top = 16.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
             }
         }
     }

@@ -17,17 +17,49 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     var username by mutableStateOf(loadUsername())
         private set
 
+    var currentLevel by mutableStateOf(loadLevel())
+        private set
+
+    var currentXP by mutableStateOf(loadXP())
+        private set
+
+    var coins by mutableStateOf(loadCoins())
+        private set
+
+    var completedTasks by mutableStateOf(loadCompletedTasks())
+        private set
+
     private var _pets = mutableStateOf<List<Pet>>(loadPets())
     val pets: List<Pet> get() = _pets.value
 
+    private fun getRequiredXPForLevel(level: Int): Int {
+        return (level + 1) * 100
+    }
+
     private fun loadUsername(): String {
         return sharedPreferences.getString("username", "User") ?: "User"
+    }
+
+    private fun loadLevel(): Int {
+        return sharedPreferences.getInt("level", 1)
+    }
+
+    private fun loadXP(): Int {
+        return sharedPreferences.getInt("xp", 0)
+    }
+
+    private fun loadCoins(): Int {
+        return sharedPreferences.getInt("coins", 0)
     }
 
     private fun loadPets(): List<Pet> {
         val petsJson = sharedPreferences.getString("pets", "[]")
         val type = object : TypeToken<List<Pet>>() {}.type
         return gson.fromJson(petsJson, type) ?: emptyList()
+    }
+
+    private fun loadCompletedTasks(): Int {
+        return sharedPreferences.getInt("completed_tasks", 0)
     }
 
     fun updateUsername(newUsername: String) {
@@ -80,6 +112,45 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         return pets.find { it.id == petId }?.let {
             Pair(it.healthPoints, it.maxHealthPoints)
         }
+    }
+
+    fun addXPAndCoins(xpAmount: Int = 20, coinsAmount: Int = 15) {
+        val newXP = currentXP + xpAmount
+        val requiredXP = getRequiredXPForLevel(currentLevel)
+
+        if (newXP >= requiredXP) {
+            currentLevel++
+            currentXP = newXP - requiredXP
+            sharedPreferences.edit().putInt("level", currentLevel).apply()
+        } else {
+            currentXP = newXP
+        }
+
+        coins += coinsAmount
+
+        sharedPreferences.edit()
+            .putInt("xp", currentXP)
+            .putInt("coins", coins)
+            .apply()
+    }
+
+    fun incrementCompletedTasks() {
+        completedTasks++
+        sharedPreferences.edit().putInt("completed_tasks", completedTasks).apply()
+    }
+
+    fun addCoins(amount: Int) {
+        coins += amount
+        sharedPreferences.edit().putInt("coins", coins).apply()
+    }
+
+    fun spendCoins(amount: Int): Boolean {
+        if (coins >= amount) {
+            coins -= amount
+            sharedPreferences.edit().putInt("coins", coins).apply()
+            return true
+        }
+        return false
     }
 
     private fun savePets() {

@@ -93,6 +93,19 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun purchaseAndUseFoodItem(food: StoreItem, petId: Int, userViewModel: UserViewModel) {
+        if (_coins.value >= food.price) {
+            _coins.value -= food.price
+            saveCoins()
+            userViewModel.healPet(petId, food.healingPoints ?: 0)
+        }
+    }
+
+    fun addCoins(amount: Int) {
+        _coins.value += amount
+        saveCoins()
+    }
+
     private fun saveCoins() {
         sharedPreferences.edit()
             .putInt("user_coins", _coins.value)
@@ -112,11 +125,6 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             emptyList()
         }
-    }
-
-    fun addCoins(amount: Int) {
-        _coins.value += amount
-        saveCoins()
     }
 
     fun dismissHealDialog() {

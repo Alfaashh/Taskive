@@ -116,29 +116,58 @@ class TaskViewModel(
         description: String = "",
         deadline: Long? = null
     ) {
+        var taskDeadline: Long? = null
         val dateTimeArray = datetime.split(", ")
-        val time = dateTimeArray.getOrNull(0)
-        val date = dateTimeArray.getOrNull(1)
+        val calendar = Calendar.getInstance()
 
-        val taskDeadline = if (date != null && time != null && date != "Select Date" && time != "Select Time") {
+        if (dateTimeArray.size == 2) {
+            val time = dateTimeArray[0]
+            val date = dateTimeArray[1]
+
             val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
             try {
-                sdf.parse("$date $time")?.time
+                // Case 1: Only date selected (no time)
+                if (date != "Select Date" && (time == "Select Time" || time.isEmpty())) {
+                    calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
+                    calendar.set(Calendar.HOUR_OF_DAY, 23)
+                    calendar.set(Calendar.MINUTE, 59)
+                    taskDeadline = calendar.timeInMillis
+                }
+                // Case 2: Only time selected (no date)
+                else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                    val timeParts = time.split(":")
+                    calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                    calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                    taskDeadline = calendar.timeInMillis
+                }
+                // Case 3: Both date and time selected
+                else if (date != "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                    taskDeadline = sdf.parse("$date $time")?.time
+                }
             } catch (e: Exception) {
-                null
+                e.printStackTrace()
+                taskDeadline = null
             }
-        } else null
+        }
 
         val daysLeft = calculateRemainingTime(taskDeadline)
 
-        // Only assign pet if there's a deadline
+        // Assign pet if there's any kind of deadline
         val assignedPetId = if (taskDeadline != null && userViewModel.pets.isNotEmpty()) {
             userViewModel.pets.random().id
         } else null
 
         val task = Task(
             title = title,
-            datetime = datetime,
+            datetime = when {
+                taskDeadline == null -> ""
+                dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
+                    "23:59, ${dateTimeArray[1]}"
+                dateTimeArray[1] == "Select Date" ->
+                    "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Calendar.getInstance().time)}"
+                else -> datetime
+            },
             daysLeft = daysLeft,
             description = description,
             deadline = taskDeadline,
@@ -157,11 +186,98 @@ class TaskViewModel(
 
         return when {
             diffMillis < 0 -> "Due Date Exceeded!"
-            diffMillis < 60 * 1000 -> "Less than a minute!"
-            diffMillis < 60 * 60 * 1000 -> "${diffMillis / (60 * 1000)} Minutes left"
-            diffMillis < 24 * 60 * 60 * 1000 -> "${diffMillis / (60 * 60 * 1000)} Hours left"
-            else -> "${diffMillis / (24 * 60 * 60 * 1000)} Days left"
+            diffMillis < 60 * 1000 -> "Less than a minute left"
+            diffMillis < 60 * 60 * 1000 -> "${diffMillis / (60 * 1000)} minutes left"
+            diffMillis < 24 * 60 * 60 * 1000 -> "${diffMillis / (60 * 60 * 1000)} hours left"
+            else -> "${diffMillis / (24 * 60 * 60 * 1000)} days left"
         }
+    }
+
+    fun updateTask(
+        taskId: String,
+        title: String,
+        datetime: String,
+        description: String,
+        isCompleted: Boolean
+    ) {
+        val index = _tasks.indexOfFirst { it.id == taskId }
+        if (index != -1) {
+            val existingTask = _tasks[index]
+            if (isCompleted) {
+                val completedTask = existingTask.copy(isCompleted = true)
+                _tasks.removeAt(index)
+                _completedTasks.add(0, completedTask)
+                _completedCount.value += 1
+
+                // Check if task was completed before deadline
+                if (existingTask.deadline != null && System.currentTimeMillis() < existingTask.deadline) {
+                    // Reward user with 15 coins and 20 XP for completing before deadline
+                    userViewModel.addXPAndCoins(20, 15)
+                }
+
+                saveTasks()
+                saveCompletedTasks()
+            } else {
+                var taskDeadline: Long? = null
+                val dateTimeArray = datetime.split(", ")
+                val calendar = Calendar.getInstance()
+
+                if (dateTimeArray.size == 2) {
+                    val time = dateTimeArray[0]
+                    val date = dateTimeArray[1]
+
+                    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
+                    try {
+                        // Case 1: Only date selected (no time)
+                        if (date != "Select Date" && (time == "Select Time" || time.isEmpty())) {
+                            calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
+                            calendar.set(Calendar.HOUR_OF_DAY, 23)
+                            calendar.set(Calendar.MINUTE, 59)
+                            taskDeadline = calendar.timeInMillis
+                        }
+                        // Case 2: Only time selected (no date)
+                        else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                            val timeParts = time.split(":")
+                            calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                            calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                            taskDeadline = calendar.timeInMillis
+                        }
+                        // Case 3: Both date and time selected
+                        else if (date != "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                            taskDeadline = sdf.parse("$date $time")?.time
+                        }
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        taskDeadline = null
+                    }
+                }
+
+                val updatedTask = existingTask.copy(
+                    title = title,
+                    datetime = when {
+                        taskDeadline == null -> ""
+                        dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
+                            "23:59, ${dateTimeArray[1]}"
+                        dateTimeArray[1] == "Select Date" ->
+                            "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(calendar.time)}"
+                        else -> datetime
+                    },
+                    daysLeft = calculateRemainingTime(taskDeadline),
+                    description = description,
+                    deadline = taskDeadline,
+                    // Maintain or assign pet if deadline exists
+                    assignedPetId = if (taskDeadline != null) {
+                        existingTask.assignedPetId ?: if (userViewModel.pets.isNotEmpty()) {
+                            userViewModel.pets.random().id
+                        } else null
+                    } else null
+                )
+                _tasks[index] = updatedTask
+                saveTasks()
+            }
+        }
+        dismissEditTaskDialog()
     }
 
     private fun updateTaskStatuses() {
@@ -180,14 +296,12 @@ class TaskViewModel(
                 }
 
                 // Check if deadline is exceeded and has a pet assigned
-                if (task.deadline < currentTime) {
-                    // Calculate time since deadline in milliseconds
+                if (task.deadline < currentTime && task.assignedPetId != null) {
                     val timeSinceDeadline = currentTime - task.deadline
                     val daysLate = (timeSinceDeadline / (24 * 60 * 60 * 1000)).toInt()
 
                     // Calculate how many days worth of damage we need to apply
                     val daysToCharge = if (updatedTask.lastHealthReduction == 0L) {
-                        // First time exceeding deadline - charge for at least one day
                         maxOf(1, daysLate)
                     } else {
                         val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
@@ -196,11 +310,8 @@ class TaskViewModel(
                     }
 
                     if (daysToCharge > 0) {
-                        // Only reduce health if we have a pet assigned
-                        updatedTask.assignedPetId?.let { petId ->
-                            // Reduce HP by 10 for each day
-                            userViewModel.reducePetHealth(petId, daysToCharge * 10)
-                        }
+                        // Reduce HP by 10 for each day late
+                        userViewModel.reducePetHealth(task.assignedPetId, daysToCharge * 10)
                         updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
                         tasksUpdated = true
                     }
@@ -232,49 +343,25 @@ class TaskViewModel(
         dismissEditTaskDialog()
     }
 
-    fun updateTask(
-        taskId: String,
-        title: String,
-        datetime: String,
-        description: String,
-        isCompleted: Boolean
-    ) {
-        val index = _tasks.indexOfFirst { it.id == taskId }
-        if (index != -1) {
-            val existingTask = _tasks[index]
-            if (isCompleted) {
-                val completedTask = existingTask.copy(isCompleted = true)
-                _tasks.removeAt(index)
-                _completedTasks.add(0, completedTask)
-                _completedCount.value += 1
-                storeViewModel.addCoins(10) // Reward 10 coins for completing a task
-                saveTasks()
-                saveCompletedTasks()
-            } else {
-                val dateTime = datetime.split(", ")
-                val time = dateTime.getOrNull(0)
-                val date = dateTime.getOrNull(1)
+    fun completeTask(taskId: String) {
+        val task = _tasks.find { it.id == taskId } ?: return
+        val currentTime = System.currentTimeMillis()
 
-                val taskDeadline = if (date != null && time != null && date != "Select Date" && time != "Select Time") {
-                    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                    try {
-                        sdf.parse("$date $time")?.time
-                    } catch (e: Exception) {
-                        null
-                    }
-                } else null
-
-                val updatedTask = existingTask.copy(
-                    title = title,
-                    datetime = datetime,
-                    daysLeft = calculateRemainingTime(taskDeadline),
-                    description = description,
-                    deadline = taskDeadline
-                )
-                _tasks[index] = updatedTask
-                saveTasks()
-            }
+        // Check if task has deadline and was completed before deadline
+        if (task.deadline != null && currentTime <= task.deadline) {
+            // Reward user with 15 coins and 20 XP for completing before deadline
+            userViewModel.addXPAndCoins(20, 15)
         }
-        dismissEditTaskDialog()
+
+        val updatedTask = task.copy(isCompleted = true)
+        _tasks.remove(task)
+        _completedTasks.add(updatedTask)
+        _completedCount.value = _completedCount.value + 1
+
+        saveTasks()
+        saveCompletedTasks()
+        sharedPreferences.edit {
+            putInt("completed_count", _completedCount.value)
+        }
     }
 }

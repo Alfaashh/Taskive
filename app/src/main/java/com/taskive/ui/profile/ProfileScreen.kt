@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,17 +34,30 @@ import com.taskive.model.Pet
 import com.taskive.ui.viewmodel.UserViewModel
 
 @Composable
-fun StatItem(count: String, label: String) {
+fun StatItem(
+    count: String,
+    label: String,
+    icon: @Composable (() -> Unit)? = null
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            count,
-            fontFamily = Nunito,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (icon != null) {
+                icon()
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Text(
+                count,
+                fontFamily = Nunito,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
         Text(
             label,
             fontFamily = Nunito,
@@ -131,7 +146,25 @@ fun PetCard(pet: Pet) {
                 )
             },
             text = {
-                Column {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(pet.getCurrentImage())
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = pet.name,
+                        modifier = Modifier
+                            .size(160.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(MediumPurpleLight.copy(alpha = 0.2f)),
+                        contentScale = ContentScale.Fit
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     Text(
                         "Health Points: ${pet.healthPoints}/${pet.maxHealthPoints}",
                         fontFamily = Nunito
@@ -212,23 +245,94 @@ fun ProfileScreen(userViewModel: UserViewModel) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Stats Card
+        // Level Progress Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(4.dp)
+                .padding(vertical = 8.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
         ) {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                    .padding(16.dp)
             ) {
-                StatItem(count = "100", label = "Coins")
-                StatItem(count = "#1", label = "Level")
-                StatItem(count = "500/600", label = "Progress")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Level ${userViewModel.currentLevel}",
+                        fontFamily = Nunito,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${userViewModel.currentXP}/${userViewModel.currentLevel * 100} XP",
+                        fontFamily = Nunito,
+                        fontSize = 16.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // XP Progress Bar
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MediumPurpleLight.copy(alpha = 0.2f))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(userViewModel.currentXP.toFloat() / (userViewModel.currentLevel * 100))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MediumPurpleDark)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Stats Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatItem(
+                        count = "${userViewModel.coins}",
+                        label = "Coins",
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.MonetizationOn,
+                                contentDescription = "Coins",
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    )
+                    StatItem(
+                        count = "${userViewModel.completedTasks}",
+                        label = "Tasks Done",
+                        icon = {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = "Completed Tasks",
+                                tint = Color(0xFF4CAF50),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    )
+                    StatItem(
+                        count = "${userViewModel.pets.size}",
+                        label = "Pets"
+                    )
+                }
             }
         }
 
