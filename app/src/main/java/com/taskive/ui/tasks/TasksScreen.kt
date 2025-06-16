@@ -809,21 +809,40 @@ fun EditTaskDialog(
                     OutlinedButton(
                         onClick = {
                             if (taskName.isNotEmpty()) {
-                                val datetime = if (selectedDateText != "Select Date" && selectedTimeText != "Select Time") {
-                                    "$selectedTimeText, $selectedDateText"
-                                } else {
-                                    ""
+                                val datetime = "$selectedTimeText, $selectedDateText"
+
+                                // Calculate deadline properly like in AddTaskDialog
+                                val deadline = when {
+                                    // Both date and time set
+                                    selectedDateText != "Select Date" && selectedTimeText != "Select Time" -> {
+                                        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+                                        val dateTimeString = "${selectedDateText} ${selectedTimeText}"
+                                        sdf.parse(dateTimeString)?.time
+                                    }
+                                    // Only date set
+                                    selectedDateText != "Select Date" && selectedTimeText == "Select Time" -> {
+                                        val calendar = Calendar.getInstance()
+                                        calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(selectedDateText)!!
+                                        calendar.set(Calendar.HOUR_OF_DAY, 23)
+                                        calendar.set(Calendar.MINUTE, 59)
+                                        calendar.timeInMillis
+                                    }
+                                    // Only time set
+                                    selectedDateText == "Select Date" && selectedTimeText != "Select Time" -> {
+                                        val calendar = Calendar.getInstance()
+                                        val timeParts = selectedTimeText.split(":")
+                                        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                                        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                                        calendar.timeInMillis
+                                    }
+                                    else -> null
                                 }
-                                val daysLeft = if (selectedDateText != "Select Date") {
-                                    calculateDaysLeft(selectedDateText)
-                                } else {
-                                    ""
-                                }
+
                                 onUpdateTask(
                                     task.id,
                                     taskName,
                                     datetime,
-                                    daysLeft,
+                                    task.daysLeft,
                                     description,
                                     false
                                 )

@@ -135,9 +135,13 @@ class TaskViewModel(
                 }
                 // Case 2: Only time selected (no date)
                 else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                    // Keep today's date, just update the time
                     val timeParts = time.split(":")
+                    // Today's date is already set since we used Calendar.getInstance()
                     calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
                     calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
                     taskDeadline = calendar.timeInMillis
                 }
                 // Case 3: Both date and time selected
@@ -202,14 +206,67 @@ class TaskViewModel(
         val taskIndex = _tasks.indexOfFirst { it.id == taskId }
         if (taskIndex != -1) {
             val oldTask = _tasks[taskIndex]
-            val daysLeft = calculateRemainingTime(null) // or pass appropriate deadline if needed
+
+            // Calculate deadline from datetime using the same logic as addTask
+            var taskDeadline: Long? = null
+            val dateTimeArray = datetime.split(", ")
+            val calendar = Calendar.getInstance()
+
+            if (dateTimeArray.size == 2) {
+                val time = dateTimeArray[0]
+                val date = dateTimeArray[1]
+                val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
+                try {
+                    // Case 1: Only date selected (no time)
+                    if (date != "Select Date" && (time == "Select Time" || time.isEmpty())) {
+                        calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
+                        calendar.set(Calendar.HOUR_OF_DAY, 23)
+                        calendar.set(Calendar.MINUTE, 59)
+                        taskDeadline = calendar.timeInMillis
+                    }
+                    // Case 2: Only time selected (no date)
+                    else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                        val timeParts = time.split(":")
+                        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                        taskDeadline = calendar.timeInMillis
+                    }
+                    // Case 3: Both date and time selected
+                    else if (date != "Select Date" && time != "Select Time" && time.isNotEmpty()) {
+                        taskDeadline = sdf.parse("$date $time")?.time
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    taskDeadline = null
+                }
+            }
+
+            // Assign pet if adding a deadline to a task that didn't have one
+            val assignedPetId = when {
+                oldTask.deadline == null && taskDeadline != null && userViewModel.pets.isNotEmpty() ->
+                    userViewModel.pets.random().id
+                else -> oldTask.assignedPetId
+            }
+
+            val daysLeft = calculateRemainingTime(taskDeadline)
             val newTask = Task(
                 id = taskId,
                 title = title,
-                datetime = datetime,
+                datetime = when {
+                    taskDeadline == null -> ""
+                    dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
+                        "23:59, ${dateTimeArray[1]}"
+                    dateTimeArray[1] == "Select Date" ->
+                        "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Calendar.getInstance().time)}"
+                    else -> datetime
+                },
                 daysLeft = daysLeft,
                 description = description,
-                isCompleted = isCompleted
+                isCompleted = isCompleted,
+                deadline = taskDeadline,
+                assignedPetId = assignedPetId,
+                lastHealthReduction = oldTask.lastHealthReduction
             )
 
             if (!oldTask.isCompleted && isCompleted) {
