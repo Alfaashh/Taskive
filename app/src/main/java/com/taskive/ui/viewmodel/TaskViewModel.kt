@@ -57,6 +57,9 @@ class TaskViewModel(
     private val _showEditTaskDialog = mutableStateOf(false)
     val showEditTaskDialog: State<Boolean> = _showEditTaskDialog
 
+    private val petSelectionHistory = mutableMapOf<Int, Int>() // petId to selection count
+    private var totalPetSelections = 0
+
     init {
         loadTasks()
         loadCompletedTasks()
@@ -109,6 +112,73 @@ class TaskViewModel(
         _selectedTask.value = null
     }
 
+    private fun getNextPet(): Int? {
+        val availablePets = userViewModel.pets.filter { it.isUsable() }
+        if (availablePets.isEmpty()) return null
+
+        // Reset history if all pets have been used equally
+        if (petSelectionHistory.size == availablePets.size &&
+            petSelectionHistory.values.all { it >= (totalPetSelections / availablePets.size) }) {
+            petSelectionHistory.clear()
+            totalPetSelections = 0
+        }
+
+        // Calculate weights based on usage history
+        val weights = availablePets.map { pet ->
+            val usageCount = petSelectionHistory[pet.id] ?: 0
+            pet.id to (1.0 / (usageCount + 1.0))
+        }.toMap()
+
+        // Select pet using weighted probability
+        val totalWeight = weights.values.sum()
+        var random = Math.random() * totalWeight
+
+        val selectedPet = weights.entries.first { (_, weight) ->
+            random -= weight
+            random <= 0
+        }.key
+
+        // Update history
+        petSelectionHistory[selectedPet] = (petSelectionHistory[selectedPet] ?: 0) + 1
+        totalPetSelections++
+
+        return selectedPet
+    }
+
+    private fun isTaskDueToday(taskDeadline: Long): Boolean {
+        val now = System.currentTimeMillis()
+        val startOfDay = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        val endOfDay = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 23)
+            set(Calendar.MINUTE, 59)
+            set(Calendar.SECOND, 59)
+            set(Calendar.MILLISECOND, 999)
+        }.timeInMillis
+
+        return taskDeadline in startOfDay..endOfDay
+    }
+
+    private fun isTaskOverdue(taskDeadline: Long): Boolean {
+        val now = System.currentTimeMillis()
+        val startOfDay = Calendar.getInstance().apply {
+            timeInMillis = now
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.timeInMillis
+
+        return taskDeadline < startOfDay
+    }
+
     fun addTask(
         title: String,
         datetime: String,
@@ -156,9 +226,12 @@ class TaskViewModel(
 
         val daysLeft = calculateRemainingTime(taskDeadline)
 
-        // Assign pet if there's any kind of deadline
-        val assignedPetId = if (taskDeadline != null && userViewModel.pets.isNotEmpty()) {
-            userViewModel.pets.random().id
+        // Only assign pet if there's a deadline and it's in the future
+        val currentTime = System.currentTimeMillis()
+        val assignedPetId = if (taskDeadline != null &&
+                              taskDeadline > currentTime &&
+                              userViewModel.pets.isNotEmpty()) {
+            getNextPet()
         } else null
 
         val task = Task(
@@ -218,27 +291,62 @@ class TaskViewModel(
                 val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
 
                 try {
-                    // Case 1: Only date selected (no time)
-                    if (date != "Select Date" && (time == "Select Time" || time.isEmpty())) {
-                        calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
-                        calendar.set(Calendar.HOUR_OF_DAY, 23)
-                        calendar.set(Calendar.MINUTE, 59)
-                        taskDeadline = calendar.timeInMillis
+                    // Calculate potential new deadline without setting it yet
+                    val potentialDeadline = when {
+                        // Case 1: Only date selected (no time) - preserve existing time if available
+                        date != "Select Date" && (time == "Select Time" || time.isEmpty()) -> {
+                            val newCalendar = Calendar.getInstance()
+                            newCalendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(date)!!
+
+                            // If there's an existing deadline, preserve its time
+                            if (oldTask.deadline != null) {
+                                val oldCalendar = Calendar.getInstance()
+                                oldCalendar.timeInMillis = oldTask.deadline
+                                newCalendar.set(Calendar.HOUR_OF_DAY, oldCalendar.get(Calendar.HOUR_OF_DAY))
+                                newCalendar.set(Calendar.MINUTE, oldCalendar.get(Calendar.MINUTE))
+                            } else {
+                                newCalendar.set(Calendar.HOUR_OF_DAY, 23)
+                                newCalendar.set(Calendar.MINUTE, 59)
+                            }
+                            newCalendar.timeInMillis
+                        }
+                        // Case 2: Only time selected (no date) - preserve the existing date
+                        date == "Select Date" && time != "Select Time" && time.isNotEmpty() -> {
+                            val newCalendar = Calendar.getInstance()
+                            // If there's an existing deadline, use its date
+                            if (oldTask.deadline != null) {
+                                newCalendar.timeInMillis = oldTask.deadline
+                            }
+                            val timeParts = time.split(":")
+                            newCalendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                            newCalendar.set(Calendar.MINUTE, timeParts[1].toInt())
+                            newCalendar.timeInMillis
+                        }
+                        // Case 3: Both date and time selected
+                        date != "Select Date" && time != "Select Time" && time.isNotEmpty() -> {
+                            sdf.parse("$date $time")?.time
+                        }
+                        else -> oldTask.deadline // Preserve existing deadline if no changes
                     }
-                    // Case 2: Only time selected (no date)
-                    else if (date == "Select Date" && time != "Select Time" && time.isNotEmpty()) {
-                        val timeParts = time.split(":")
-                        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
-                        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
-                        taskDeadline = calendar.timeInMillis
-                    }
-                    // Case 3: Both date and time selected
-                    else if (date != "Select Date" && time != "Select Time" && time.isNotEmpty()) {
-                        taskDeadline = sdf.parse("$date $time")?.time
-                    }
+
+                    taskDeadline = potentialDeadline
                 } catch (e: Exception) {
                     e.printStackTrace()
-                    taskDeadline = null
+                    taskDeadline = oldTask.deadline
+                }
+            }
+
+            // Keep the original datetime if trying to set a past time
+            val finalDateTime = if (taskDeadline != null && taskDeadline < System.currentTimeMillis()) {
+                oldTask.datetime
+            } else {
+                when {
+                    taskDeadline == null -> ""
+                    dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
+                        "23:59, ${dateTimeArray[1]}"
+                    dateTimeArray[1] == "Select Date" ->
+                        "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Calendar.getInstance().time)}"
+                    else -> datetime
                 }
             }
 
@@ -253,14 +361,7 @@ class TaskViewModel(
             val newTask = Task(
                 id = taskId,
                 title = title,
-                datetime = when {
-                    taskDeadline == null -> ""
-                    dateTimeArray[0] == "Select Time" || dateTimeArray[0].isEmpty() ->
-                        "23:59, ${dateTimeArray[1]}"
-                    dateTimeArray[1] == "Select Date" ->
-                        "${dateTimeArray[0]}, ${SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Calendar.getInstance().time)}"
-                    else -> datetime
-                },
+                datetime = finalDateTime,
                 daysLeft = daysLeft,
                 description = description,
                 isCompleted = isCompleted,
@@ -320,24 +421,25 @@ class TaskViewModel(
                 }
 
                 // Check if deadline is exceeded and has a pet assigned
-                if (task.deadline < currentTime && task.assignedPetId != null) {
+                if (isTaskOverdue(task.deadline) && task.assignedPetId != null) {
                     val timeSinceDeadline = currentTime - task.deadline
                     val daysLate = (timeSinceDeadline / (24 * 60 * 60 * 1000)).toInt()
 
-                    // Calculate how many days worth of damage we need to apply
-                    val daysToCharge = if (updatedTask.lastHealthReduction == 0L) {
-                        maxOf(1, daysLate)
-                    } else {
-                        val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
-                        val daysSinceLastReduction = (timeSinceLastReduction / (24 * 60 * 60 * 1000)).toInt()
-                        if (daysSinceLastReduction >= 1) daysSinceLastReduction else 0
-                    }
+                    // Calculate damage only if the task is actually overdue (not just due today)
+                    if (daysLate > 0) {
+                        val daysToCharge = if (updatedTask.lastHealthReduction == 0L) {
+                            daysLate
+                        } else {
+                            val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
+                            val daysSinceLastReduction = (timeSinceLastReduction / (24 * 60 * 60 * 1000)).toInt()
+                            if (daysSinceLastReduction >= 1) daysSinceLastReduction else 0
+                        }
 
-                    if (daysToCharge > 0) {
-                        // Reduce HP by 10 for each day late
-                        userViewModel.reducePetHealth(task.assignedPetId, daysToCharge * 10)
-                        updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
-                        tasksUpdated = true
+                        if (daysToCharge > 0) {
+                            userViewModel.reducePetHealth(task.assignedPetId, daysToCharge * 10)
+                            updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
+                            tasksUpdated = true
+                        }
                     }
                 }
 

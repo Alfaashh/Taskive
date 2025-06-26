@@ -42,7 +42,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun buyPet(itemId: Int, userViewModel: UserViewModel) {
         val item = availablePets.find { it.id == itemId }
-        if (item != null && userViewModel.coins >= item.price && !_purchasedPetIds.value.contains(item.id)) {
+        if (item != null &&
+            userViewModel.coins >= item.price &&
+            !_purchasedPetIds.value.contains(item.id) &&
+            // Add level requirement for cat (ID 1)
+            (item.id != 1 || userViewModel.currentLevel >= 2)) {
+
             userViewModel.spendCoins(item.price)
             _purchasedPetIds.value = _purchasedPetIds.value + item.id
 

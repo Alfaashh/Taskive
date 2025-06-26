@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import com.taskive.navigation.Screen
 import com.taskive.ui.theme.*
@@ -25,6 +26,7 @@ import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
 import com.taskive.ui.viewmodel.UserViewModel
 import com.taskive.ui.tasks.EditTaskDialog
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,13 +122,51 @@ private fun GreetingSection(username: String) {
 
 @Composable
 private fun SummarySection(taskViewModel: TaskViewModel) {
+    val currentTime = System.currentTimeMillis()
+
+    val startOfDay = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    val endOfDay = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 23)
+        set(Calendar.MINUTE, 59)
+        set(Calendar.SECOND, 59)
+        set(Calendar.MILLISECOND, 999)
+    }.timeInMillis
+
+    val startOfNextDay = Calendar.getInstance().apply {
+        add(Calendar.DAY_OF_MONTH, 1)
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    // Count tasks based on categories
+    val upcomingTasks = taskViewModel.tasks.count { task ->
+        !task.isCompleted && task.deadline != null && task.deadline > currentTime
+    }
+
+    val todayTasks = taskViewModel.tasks.count { task ->
+        !task.isCompleted && task.deadline != null &&
+        task.deadline in (currentTime + 1)..endOfDay
+    }
+
+    val overdueTasks = taskViewModel.tasks.count { task ->
+        !task.isCompleted && task.deadline != null && task.deadline <= currentTime
+    }
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        SummaryCard(count = "0", label = "Upcoming")
-        SummaryCard(count = "0", label = "Today")
-        SummaryCard(count = taskViewModel.completedCount.value.toString(), label = "Completed")
+        SummaryCard(count = upcomingTasks.toString(), label = "Upcoming")
+        SummaryCard(count = todayTasks.toString(), label = "Today")
+        SummaryCard(count = overdueTasks.toString(), label = "Overdue")
     }
 }
 
@@ -190,11 +230,13 @@ private fun RecentTasksSection(
                 fontSize = 14.sp,
                 color = MediumPurpleDark,
                 modifier = Modifier.clickable {
-                    try {
-                        taskViewModel.dismissEditTaskDialog()
-                        navController.navigate(Screen.Tasks.route)
-                    } catch (e: Exception) {
-                        // Navigation failed, stay on current screen
+                    taskViewModel.dismissEditTaskDialog()
+                    navController.navigate(Screen.Tasks.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )

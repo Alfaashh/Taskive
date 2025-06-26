@@ -26,6 +26,7 @@ import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -637,16 +638,14 @@ fun AddTaskDialog(
                         }
                         TextButton(
                             onClick = {
-                                showTimePicker = false
-                                val newTimeText = String.format(
+                                selectedTimeText = String.format(
                                     Locale.getDefault(),
                                     "%02d:%02d",
                                     timePickerState.hour,
                                     timePickerState.minute
                                 )
-                                selectedTimeText = newTimeText
-                            }
-                        ) {
+                                showTimePicker = false
+                            }) {
                             Text("OK", fontFamily = Nunito)
                         }
                     }
@@ -666,17 +665,44 @@ fun EditTaskDialog(
 ) {
     var taskName by rememberSaveable { mutableStateOf(task.title) }
     var description by rememberSaveable { mutableStateOf(task.description) }
-
-    // Extract date and time from datetime string
     val dateTimeArray = task.datetime.split(", ")
     var selectedTimeText by rememberSaveable { mutableStateOf(dateTimeArray.getOrNull(0) ?: "Select Time") }
     var selectedDateText by rememberSaveable { mutableStateOf(dateTimeArray.getOrNull(1) ?: "Select Date") }
+    var isValidDateTime by remember { mutableStateOf(true) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
 
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState(is24Hour = true)
+
+    // Function to check if selected time is in the past
+    fun isDateTimeCombinationValid(date: String, time: String): Boolean {
+        if (date == "Select Date" || time == "Select Time") return true
+
+        try {
+            val calendar = Calendar.getInstance()
+            if (date != "Select Date") {
+                val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                calendar.time = dateFormat.parse(date) ?: return false
+            }
+
+            if (time != "Select Time") {
+                val timeParts = time.split(":")
+                calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
+                calendar.set(Calendar.MINUTE, timeParts[1].toInt())
+            }
+
+            return calendar.timeInMillis > System.currentTimeMillis()
+        } catch (e: Exception) {
+            return false
+        }
+    }
+
+    // Update validation whenever date or time changes
+    LaunchedEffect(selectedDateText, selectedTimeText) {
+        isValidDateTime = isDateTimeCombinationValid(selectedDateText, selectedTimeText)
+    }
 
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
@@ -716,77 +742,78 @@ fun EditTaskDialog(
                 OutlinedTextField(
                     value = taskName,
                     onValueChange = { taskName = it },
-                    label = { Text("Task Name", fontFamily = Nunito) },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    label = { Text("Task Name") },
+                    modifier = Modifier.fillMaxWidth()
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Date Selection
-                OutlinedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker = true },
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(selectedDateText, fontFamily = Nunito)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Time Selection
-                OutlinedCard(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showTimePicker = true },
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Default.Schedule, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(selectedTimeText, fontFamily = Nunito)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Description", fontFamily = Nunito) },
+                    label = { Text("Description") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Date Selection with OutlinedTextField style
+                OutlinedTextField(
+                    value = selectedDateText,
+                    onValueChange = { },
+                    label = { Text("Date") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp),
-                    maxLines = 4
+                        .clickable { showDatePicker = true },
+                    enabled = false,
+                    trailingIcon = {
+                        Icon(Icons.Default.CalendarToday, "Select date")
+                    }
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Time Selection with OutlinedTextField style
+                OutlinedTextField(
+                    value = selectedTimeText,
+                    onValueChange = { },
+                    label = { Text("Time") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showTimePicker = true },
+                    enabled = false,
+                    trailingIcon = {
+                        Icon(Icons.Default.Schedule, "Select time")
+                    }
+                )
+
+                if (!isValidDateTime && selectedDateText != "Select Date" && selectedTimeText != "Select Time") {
+                    Text(
+                        text = "Cannot set deadline in the past",
+                        color = Color.Red,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Complete Task Button
                 Button(
                     onClick = {
-                        val datetime = "$selectedTimeText, $selectedDateText"
-                        onUpdateTask(
-                            task.id,
-                            taskName,
-                            datetime,
-                            task.daysLeft,
-                            description,
-                            true // Mark as completed
-                        )
+                        if (taskName.isNotEmpty()) {
+                            val datetime = "$selectedTimeText, $selectedDateText"
+                            onUpdateTask(
+                                task.id,
+                                taskName,
+                                datetime,
+                                task.daysLeft,
+                                description,
+                                true // Mark as completed
+                            )
+                        }
                     },
                     modifier = Modifier.fillMaxWidth(),
+                    enabled = taskName.isNotEmpty() && isValidDateTime,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF4CAF50)
                     )
@@ -810,34 +837,6 @@ fun EditTaskDialog(
                         onClick = {
                             if (taskName.isNotEmpty()) {
                                 val datetime = "$selectedTimeText, $selectedDateText"
-
-                                // Calculate deadline properly like in AddTaskDialog
-                                val deadline = when {
-                                    // Both date and time set
-                                    selectedDateText != "Select Date" && selectedTimeText != "Select Time" -> {
-                                        val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-                                        val dateTimeString = "${selectedDateText} ${selectedTimeText}"
-                                        sdf.parse(dateTimeString)?.time
-                                    }
-                                    // Only date set
-                                    selectedDateText != "Select Date" && selectedTimeText == "Select Time" -> {
-                                        val calendar = Calendar.getInstance()
-                                        calendar.time = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(selectedDateText)!!
-                                        calendar.set(Calendar.HOUR_OF_DAY, 23)
-                                        calendar.set(Calendar.MINUTE, 59)
-                                        calendar.timeInMillis
-                                    }
-                                    // Only time set
-                                    selectedDateText == "Select Date" && selectedTimeText != "Select Time" -> {
-                                        val calendar = Calendar.getInstance()
-                                        val timeParts = selectedTimeText.split(":")
-                                        calendar.set(Calendar.HOUR_OF_DAY, timeParts[0].toInt())
-                                        calendar.set(Calendar.MINUTE, timeParts[1].toInt())
-                                        calendar.timeInMillis
-                                    }
-                                    else -> null
-                                }
-
                                 onUpdateTask(
                                     task.id,
                                     taskName,
@@ -850,7 +849,7 @@ fun EditTaskDialog(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        enabled = taskName.isNotEmpty()
+                        enabled = taskName.isNotEmpty() && isValidDateTime
                     ) {
                         Text("Save", fontFamily = Nunito)
                     }
@@ -859,25 +858,28 @@ fun EditTaskDialog(
         }
     }
 
+    // Date Picker Dialog
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
-                TextButton(onClick = {
-                    showDatePicker = false
-                    datePickerState.selectedDateMillis?.let { millis ->
-                        val calendar = Calendar.getInstance()
-                        calendar.timeInMillis = millis
-                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                        selectedDateText = sdf.format(calendar.time)
+                TextButton(
+                    onClick = {
+                        showDatePicker = false
+                        datePickerState.selectedDateMillis?.let { millis ->
+                            val calendar = Calendar.getInstance()
+                            calendar.timeInMillis = millis
+                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            selectedDateText = sdf.format(calendar.time)
+                        }
                     }
-                }) {
-                    Text("OK", fontFamily = Nunito)
+                ) {
+                    Text("OK")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel", fontFamily = Nunito)
+                    Text("Cancel")
                 }
             }
         ) {
@@ -898,8 +900,7 @@ fun EditTaskDialog(
                 ) {
                     Text(
                         "Select Time",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontFamily = Nunito
+                        style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(24.dp))
                     TimePicker(state = timePickerState)
@@ -909,21 +910,15 @@ fun EditTaskDialog(
                         horizontalArrangement = Arrangement.End
                     ) {
                         TextButton(onClick = { showTimePicker = false }) {
-                            Text("Cancel", fontFamily = Nunito)
+                            Text("Cancel")
                         }
                         TextButton(
                             onClick = {
+                                selectedTimeText = String.format("%02d:%02d",
+                                    timePickerState.hour, timePickerState.minute)
                                 showTimePicker = false
-                                val newTimeText = String.format(
-                                    Locale.getDefault(),
-                                    "%02d:%02d",
-                                    timePickerState.hour,
-                                    timePickerState.minute
-                                )
-                                selectedTimeText = newTimeText
-                            }
-                        ) {
-                            Text("OK", fontFamily = Nunito)
+                            }) {
+                            Text("OK")
                         }
                     }
                 }

@@ -33,7 +33,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     val pets: List<Pet> get() = _pets.value
 
     private fun getRequiredXPForLevel(level: Int): Int {
-        return (level + 1) * 100
+        return level * 100
     }
 
     private fun loadUsername(): String {
@@ -49,7 +49,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadCoins(): Int {
-        return sharedPreferences.getInt("coins", 200)  // Changed default value to 200
+        return sharedPreferences.getInt("coins", 500)  // Set default value to 500
     }
 
     private fun loadPets(): List<Pet> {
@@ -78,50 +78,55 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
         savePets()
     }
 
+    fun healPet(petId: Int, healingPoints: Int) {
+        _pets.value = _pets.value.map { pet ->
+            if (pet.id == petId) {
+                // Don't heal if pet is at max health or dead
+                if (pet.status == "Dead" || pet.healthPoints >= pet.maxHealthPoints) {
+                    pet
+                } else {
+                    val newHealth = (pet.healthPoints + healingPoints).coerceAtMost(pet.maxHealthPoints)
+                    pet.copy(
+                        healthPoints = newHealth,
+                        status = if (newHealth < pet.maxHealthPoints) "Sick" else "Healthy"
+                    )
+                }
+            } else pet
+        }
+        savePets()
+    }
+
     fun reducePetHealth(petId: Int, amount: Int) {
         _pets.value = _pets.value.map { pet ->
             if (pet.id == petId) {
                 val newHealth = (pet.healthPoints - amount).coerceAtLeast(0)
                 pet.copy(
                     healthPoints = newHealth,
-                    status = if (newHealth < pet.maxHealthPoints) "Sick" else "Healthy"
+                    status = when {
+                        newHealth <= 0 -> "Dead"
+                        newHealth < pet.maxHealthPoints -> "Sick"
+                        else -> "Healthy"
+                    }
                 )
             } else pet
         }
         savePets()
-    }
-
-    fun healPet(petId: Int, healingPoints: Int) {
-        _pets.value = _pets.value.map { pet ->
-            if (pet.id == petId) {
-                val newHealth = (pet.healthPoints + healingPoints).coerceAtMost(pet.maxHealthPoints)
-                pet.copy(
-                    healthPoints = newHealth,
-                    status = if (newHealth < pet.maxHealthPoints) "Sick" else "Healthy"
-                )
-            } else pet
-        }
-        savePets()
-    }
-
-    fun getPetHealth(petId: Int): Pair<Int, Int>? {
-        return pets.find { it.id == petId }?.let {
-            Pair(it.healthPoints, it.maxHealthPoints)
-        }
     }
 
     fun addXPAndCoins(xpAmount: Int = 20, coinsAmount: Int = 15) {
-        // Update XP and potentially level up
+        // Add XP and check for level up
         currentXP += xpAmount
+
+        // Keep leveling up while XP is sufficient
         while (currentXP >= getRequiredXPForLevel(currentLevel)) {
             currentXP -= getRequiredXPForLevel(currentLevel)
             currentLevel++
         }
 
-        // Update coins
+        // Add coins
         coins += coinsAmount
 
-        // Save all changes
+        // Save changes
         sharedPreferences.edit()
             .putInt("xp", currentXP)
             .putInt("level", currentLevel)

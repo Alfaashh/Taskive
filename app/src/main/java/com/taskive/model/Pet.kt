@@ -1,5 +1,7 @@
 package com.taskive.model
 
+import com.taskive.R
+
 data class Pet(
     val id: Int,
     val name: String,
@@ -10,10 +12,22 @@ data class Pet(
     var sickImageResId: Int? = null
 ) {
     fun updateStatus() {
-        status = if (healthPoints < maxHealthPoints) "Sick" else "Healthy"
+        status = when {
+            healthPoints <= 0 -> "Dead"
+            healthPoints < maxHealthPoints -> "Sick"
+            else -> "Healthy"
+        }
     }
 
     fun getCurrentImage(): Int {
-        return if (status == "Sick" && sickImageResId != null) sickImageResId!! else imageResId
+        return when (status) {
+            "Dead" -> R.drawable.death_pet
+            "Sick" -> sickImageResId ?: imageResId
+            else -> imageResId
+        }
+    }
+
+    fun isUsable(): Boolean {
+        return status != "Dead"
     }
 }

@@ -117,6 +117,7 @@ fun StoreScreen(
             items(items, key = { it.id }) { item ->
                 StoreItemCard(
                     item = item,
+                    userViewModel = userViewModel,
                     coins = item.price,
                     isPurchased = selectedCategory == StoreCategory.PET &&
                                 storeViewModel.purchasedPetIds.value.contains(item.id)
@@ -325,8 +326,9 @@ fun CategoryTab(
 }
 
 @Composable
-fun StoreItemCard(
+private fun StoreItemCard(
     item: StoreItem,
+    userViewModel: UserViewModel,
     coins: Int,
     isPurchased: Boolean,
     onClick: () -> Unit
@@ -334,61 +336,85 @@ fun StoreItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(0.9f)
-            .clickable(onClick = onClick),
+            .height(180.dp)  // Fixed height for consistency
+            .padding(8.dp)
+            .clickable(
+                enabled = !isPurchased &&
+                        (item.id != 1 || userViewModel.currentLevel >= 2) &&
+                        userViewModel.coins >= item.price,
+                onClick = onClick
+            ),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(item.imageRes)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = item.name,
-                contentScale = ContentScale.Fit,
+            Box(
                 modifier = Modifier
-                    .size(100.dp)
-                    .clip(RoundedCornerShape(12.dp))
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = item.name,
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-
-            if (isPurchased) {
-                Text(
-                    text = "Owned",
-                    color = Color.Gray,
-                    fontSize = 14.sp,
-                    fontFamily = Nunito
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFF5F5F5))
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(item.imageRes)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 )
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFFFFC107), shape = CircleShape)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = item.name,
+                    fontFamily = Nunito,
+                    fontWeight = FontWeight.Bold
+                )
+
+                if (item.id == 1 && !isPurchased && userViewModel.currentLevel < 2) {
                     Text(
-                        text = coins.toString(),
-                        fontFamily = Nunito,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color.Black
+                        text = "Requires Level 2",
+                        color = Color.Red,
+                        fontSize = 12.sp,
+                        fontFamily = Nunito
                     )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    if (!isPurchased) {
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .background(Color(0xFFFFC107), CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = coins.toString(),
+                            color = if (userViewModel.coins >= item.price) Color.Black else Color.Red,
+                            fontFamily = Nunito
+                        )
+                    } else {
+                        Text(
+                            text = "Purchased",
+                            color = Color.Gray,
+                            fontFamily = Nunito
+                        )
+                    }
                 }
             }
         }
