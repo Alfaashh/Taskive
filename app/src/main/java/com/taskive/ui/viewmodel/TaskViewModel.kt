@@ -421,22 +421,24 @@ class TaskViewModel(
                 }
 
                 // Check if deadline is exceeded and has a pet assigned
-                if (isTaskOverdue(task.deadline) && task.assignedPetId != null) {
+                if (task.deadline < currentTime && task.assignedPetId != null) {
                     val timeSinceDeadline = currentTime - task.deadline
                     val daysLate = (timeSinceDeadline / (24 * 60 * 60 * 1000)).toInt()
 
-                    // Calculate damage only if the task is actually overdue (not just due today)
-                    if (daysLate > 0) {
-                        val daysToCharge = if (updatedTask.lastHealthReduction == 0L) {
-                            daysLate
-                        } else {
-                            val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
-                            val daysSinceLastReduction = (timeSinceLastReduction / (24 * 60 * 60 * 1000)).toInt()
-                            if (daysSinceLastReduction >= 1) daysSinceLastReduction else 0
-                        }
+                    // Initial damage when task first becomes late
+                    if (updatedTask.lastHealthReduction == 0L) {
+                        userViewModel.reducePetHealth(task.assignedPetId, 10) // Initial 10 HP reduction
+                        updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
+                        tasksUpdated = true
+                    }
 
-                        if (daysToCharge > 0) {
-                            userViewModel.reducePetHealth(task.assignedPetId, daysToCharge * 10)
+                    // Additional daily damage
+                    if (daysLate > 0) {
+                        val timeSinceLastReduction = currentTime - updatedTask.lastHealthReduction
+                        val daysSinceLastReduction = (timeSinceLastReduction / (24 * 60 * 60 * 1000)).toInt()
+
+                        if (daysSinceLastReduction >= 1) {
+                            userViewModel.reducePetHealth(task.assignedPetId, daysSinceLastReduction * 10)
                             updatedTask = updatedTask.copy(lastHealthReduction = currentTime)
                             tasksUpdated = true
                         }
