@@ -148,16 +148,17 @@ private fun SummarySection(taskViewModel: TaskViewModel) {
 
     // Count tasks based on categories
     val upcomingTasks = taskViewModel.tasks.count { task ->
-        !task.isCompleted && task.deadline != null && task.deadline > endOfDay
+        !task.isCompleted && task.deadline != null && task.deadline > currentTime && task.deadline > endOfDay
     }
 
     val todayTasks = taskViewModel.tasks.count { task ->
         !task.isCompleted && task.deadline != null &&
-        task.deadline in startOfDay..endOfDay
+        task.deadline > currentTime && // Must be in the future
+        task.deadline in startOfDay..endOfDay // Must be today
     }
 
     val overdueTasks = taskViewModel.tasks.count { task ->
-        !task.isCompleted && task.deadline != null && task.deadline < startOfDay
+        !task.isCompleted && task.deadline != null && task.deadline <= currentTime
     }
 
     Row(

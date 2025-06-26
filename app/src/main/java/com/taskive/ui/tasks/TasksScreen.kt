@@ -813,7 +813,7 @@ fun EditTaskDialog(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = taskName.isNotEmpty() && isValidDateTime,
+                    enabled = taskName.isNotEmpty(), // Remove isValidDateTime check here
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Color(0xFF4CAF50)
                     )

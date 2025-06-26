@@ -76,7 +76,13 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
 
     fun healPet(petId: Int, userViewModel: UserViewModel) {
         val food = _selectedFood.value
-        if (food != null && userViewModel.coins >= food.price) {
+        // Find the pet to check its health
+        val pet = userViewModel.pets.find { it.id == petId }
+
+        if (food != null &&
+            userViewModel.coins >= food.price &&
+            pet != null &&
+            pet.healthPoints < pet.maxHealthPoints) { // Only allow healing if HP is not full
             userViewModel.spendCoins(food.price)
             userViewModel.healPet(petId, food.healingPoints)
             _showHealDialog.value = false
@@ -85,7 +91,12 @@ class StoreViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun purchaseAndUseFoodItem(food: StoreItem, petId: Int, userViewModel: UserViewModel) {
-        if (userViewModel.coins >= food.price) {
+        // Find the pet to check its health
+        val pet = userViewModel.pets.find { it.id == petId }
+
+        if (userViewModel.coins >= food.price &&
+            pet != null &&
+            pet.healthPoints < pet.maxHealthPoints) { // Only allow healing if HP is not full
             userViewModel.spendCoins(food.price)
             userViewModel.healPet(petId, food.healingPoints ?: 0)
         }
