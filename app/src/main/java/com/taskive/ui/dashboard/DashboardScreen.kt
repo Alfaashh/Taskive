@@ -26,6 +26,8 @@ import com.taskive.ui.viewmodel.TaskViewModel
 import com.taskive.ui.viewmodel.StoreViewModel
 import com.taskive.ui.viewmodel.UserViewModel
 import com.taskive.ui.tasks.EditTaskDialog
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -112,7 +114,7 @@ private fun GreetingSection(username: String) {
             color = TextColorDark
         )
         Text(
-            text = "Monday, 30 May 2025",
+            text = LocalDateTime.now().format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy")),
             style = MaterialTheme.typography.bodyLarge,
             color = TextColorLight,
             modifier = Modifier.padding(bottom = 4.dp)
