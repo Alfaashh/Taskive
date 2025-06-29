@@ -676,7 +676,7 @@ fun EditTaskDialog(
     val datePickerState = rememberDatePickerState()
     val timePickerState = rememberTimePickerState(is24Hour = true)
 
-    // Function to check if selected time is in the past
+    // Function to check if selected time is past the current time
     fun isDateTimeCombinationValid(date: String, time: String): Boolean {
         if (date == "Select Date" || time == "Select Time") return true
 
@@ -693,7 +693,21 @@ fun EditTaskDialog(
                 calendar.set(Calendar.MINUTE, timeParts[1].toInt())
             }
 
-            return calendar.timeInMillis > System.currentTimeMillis()
+            // Get original task's deadline
+            val originalDeadline = task.deadline ?: return true // If no deadline, validation passes
+
+            // If task was originally created with a future deadline (has pet assigned)
+            val wasOriginallyFuture = task.assignedPetId != null
+
+            // For tasks that were originally created with future deadline
+            if (wasOriginallyFuture) {
+                // Only allow editing to future times
+                return calendar.timeInMillis > System.currentTimeMillis()
+            }
+
+            // For tasks that were originally created with past deadline
+            // Allow any time edit, as they won't get pet assignment anyway
+            return true
         } catch (e: Exception) {
             return false
         }
@@ -768,7 +782,11 @@ fun EditTaskDialog(
                     enabled = false,
                     trailingIcon = {
                         Icon(Icons.Default.CalendarToday, "Select date")
-                    }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -784,10 +802,14 @@ fun EditTaskDialog(
                     enabled = false,
                     trailingIcon = {
                         Icon(Icons.Default.Schedule, "Select time")
-                    }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        disabledBorderColor = MaterialTheme.colorScheme.outline,
+                        disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 )
 
-                if (!isValidDateTime && selectedDateText != "Select Date" && selectedTimeText != "Select Time") {
+                if (!isValidDateTime && task.assignedPetId != null) {
                     Text(
                         text = "Cannot set deadline in the past",
                         color = Color.Red,
