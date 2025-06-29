@@ -262,7 +262,7 @@ class TaskViewModel(
 
         return when {
             diffMillis < 0 -> "Due Date Exceeded!"
-            diffMillis < 60 * 1000 -> "Less than a minute left"
+            diffMillis < 60 * 1000 -> "Under a minute left"
             diffMillis < 60 * 60 * 1000 -> "${diffMillis / (60 * 1000)} minutes left"
             diffMillis < 24 * 60 * 60 * 1000 -> "${diffMillis / (60 * 60 * 1000)} hours left"
             else -> "${diffMillis / (24 * 60 * 60 * 1000)} days left"

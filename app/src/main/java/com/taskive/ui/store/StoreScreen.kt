@@ -31,6 +31,7 @@ import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
 import com.taskive.DarkPurple
 import com.taskive.model.StoreItem
+import com.taskive.model.Pet
 import com.taskive.ui.theme.MediumPurpleLight
 import com.taskive.ui.theme.MediumPurpleDark
 import com.taskive.ui.theme.Nunito
@@ -356,9 +357,10 @@ private fun StoreItemCard(
         ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(85.dp)  // Increased size
                     .clip(CircleShape)
-                    .background(Color(0xFFF5F5F5))
+                    .background(Color.White)  // Added white background
+                    .padding(4.dp)
             ) {
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
@@ -367,9 +369,7 @@ private fun StoreItemCard(
                         .build(),
                     contentDescription = item.name,
                     contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxSize()
                 )
             }
 
@@ -591,4 +591,89 @@ fun HealDialog(
             }
         }
     )
+}
+
+@Composable
+fun PetCard(
+    pet: Pet,
+    coins: Int,
+    onBuyPet: (Pet) -> Unit,
+    userViewModel: UserViewModel
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(MediumPurpleLight, MediumPurpleDark)
+                    )
+                )
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    pet.name,
+                    fontFamily = Nunito,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Text(
+                    "Coins",  // Note: Pet model doesn't have price, you might need to add it
+                    fontFamily = Nunito,
+                    fontSize = 16.sp,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = { onBuyPet(pet) },
+                    enabled = coins >= 0 && !userViewModel.pets.any { it.id == pet.id },  // Adjusted to use direct id property
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (coins >= 0 && !userViewModel.pets.any { it.id == pet.id })
+                            Color(0xFF4CAF50) else Color.Gray
+                    )
+                ) {
+                    Text(
+                        if (userViewModel.pets.any { it.id == pet.id }) "Owned"
+                        else if (coins >= 0) "Buy"
+                        else "Not enough coins",
+                        fontFamily = Nunito,
+                        color = Color.White
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .size(65.dp)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .padding(4.dp)
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(pet.getCurrentImage())  // This method exists in Pet model
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = pet.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+    }
 }

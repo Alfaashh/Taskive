@@ -693,19 +693,28 @@ fun EditTaskDialog(
                 calendar.set(Calendar.MINUTE, timeParts[1].toInt())
             }
 
-            // Get original task's deadline
-            val originalDeadline = task.deadline ?: return true // If no deadline, validation passes
+            // Get original task's deadline and current time
+            val currentTime = System.currentTimeMillis()
+            val originalDeadline = task.deadline ?: return true
 
             // If task was originally created with a future deadline (has pet assigned)
             val wasOriginallyFuture = task.assignedPetId != null
 
             // For tasks that were originally created with future deadline
             if (wasOriginallyFuture) {
-                // Only allow editing to future times
-                return calendar.timeInMillis > System.currentTimeMillis()
+                // Check if the original deadline has already passed
+                val hasDeadlinePassed = originalDeadline < currentTime
+
+                if (hasDeadlinePassed) {
+                    // For passed deadlines, allow any future time but not past time
+                    return calendar.timeInMillis > currentTime
+                } else {
+                    // For upcoming deadlines, continue with the strict validation
+                    return calendar.timeInMillis > currentTime
+                }
             }
 
-            // For tasks that were originally created with past deadline
+            // For tasks originally created with past deadline
             // Allow any time edit, as they won't get pet assignment anyway
             return true
         } catch (e: Exception) {
@@ -809,7 +818,7 @@ fun EditTaskDialog(
                     )
                 )
 
-                if (!isValidDateTime && task.assignedPetId != null) {
+                if (!isValidDateTime && task.assignedPetId != null && task.deadline != null && task.deadline > System.currentTimeMillis()) {
                     Text(
                         text = "Cannot set deadline in the past",
                         color = Color.Red,
